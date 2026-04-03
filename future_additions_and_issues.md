@@ -1,15 +1,19 @@
-in no particular order:
+Future Additions (in no particular order):
 - gui
 - cad files
-- input validation
+- input validation - verify the tag name column contains . for discrete and [] for analog
 - module presets?? - not sure about this
-- output directory option (--output) -DONE
 - update-project command? - what would this do?
-- safety program generator - DONE
 - package into wheel for distribution
-- put on github
 - generate hardware?? - is this a bad idea?
+- work for other types of I/O (flex, compact) - may already work, needs testing
+- readme update with instructions on usage
 
+Completed:
+- output directory option (--output) -DONE
+- safety program generator - DONE
+- put on github - DONE
+- auto generate tag name using module type and routine name number - DONE
 
 Issues:
 - IO Module Status Program - GSV instance name uses module name from sheet, but i dont always name hardware the same, for example, GBP C10 has hardware module "R4103b_SIL1" but name in routine is "R4103b_SIL1_IR2"

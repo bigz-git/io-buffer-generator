@@ -22,6 +22,8 @@ Rack sheet columns (1-indexed):
   G: Drawing File Name
 """
 
+import re
+
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Side, Font
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -71,6 +73,16 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_netwo
     ws["A2"] = software_version
     ws["B2"] = controller_name
     ws["C2"] = io_network_card
+
+    note = (
+        "Note: For auto tag fill (fill-tags command), routine names in rack sheets must start "
+        "with R#### (e.g. R4103, where 4103 is the drawing sheet number where the I/O module is shown)."
+    )
+    ws["A4"] = note
+    ws["A4"].font = Font(italic=True)
+    ws["A4"].alignment = Alignment(wrap_text=True)
+    ws.merge_cells("A4:C4")
+    ws.row_dimensions[4].height = 45
 
     ws["A5"] = "Rack Name"
     ws["B5"] = "IO Bit Count"
@@ -297,6 +309,88 @@ def read_project(path: str) -> Project:
         io_network_card=io_network_card,
         racks=racks,
     )
+
+
+# ---------------------------------------------------------------------------
+# Tag name generation
+# ---------------------------------------------------------------------------
+
+_TAG_PREFIX = {
+    "Input":            ("DI",  "dot"),
+    "Output":           ("DO",  "dot"),
+    "Safety Input":     ("DIS", "dot"),
+    "Safety Output":    ("DOS", "dot"),
+    "Analog Input":     ("AI",  "bracket"),
+    "Analog Output":    ("AO",  "bracket"),
+    "Thermocouple/RTD": ("AI",  "bracket"),
+}
+
+_ROUTINE_RE = re.compile(r'^R(\d{4})')
+
+
+def _generate_tag(mod_type: str, routine: str, bit_index: int) -> str:
+    prefix, notation = _TAG_PREFIX.get(mod_type, ("??", "dot"))
+    m = _ROUTINE_RE.match(routine)
+    xxxx = m.group(1) if m else "XXXX"
+    if notation == "bracket":
+        return f"{prefix}_{xxxx}[{bit_index}]"
+    return f"{prefix}_{xxxx}.{bit_index}"
+
+
+def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
+    """
+    Fill blank column-E cells with auto-generated tag names.
+    Returns (filled_count, skipped_slots) where skipped_slots are slot numbers
+    whose module type was not set.
+    """
+    wb = load_workbook(path)
+    if rack_name not in wb.sheetnames:
+        raise ValueError(f"Rack '{rack_name}' not found in workbook.")
+
+    ws = wb[rack_name]
+
+    # Resolve merged cell values
+    merged_values = {}
+    for merge in ws.merged_cells.ranges:
+        top_left_val = ws.cell(merge.min_row, merge.min_col).value
+        for row in range(merge.min_row, merge.max_row + 1):
+            for col in range(merge.min_col, merge.max_col + 1):
+                merged_values[(row, col)] = top_left_val
+
+    def cell_val(row, col):
+        key = (row, col)
+        if key in merged_values:
+            return merged_values[key]
+        return ws.cell(row=row, column=col).value
+
+    filled = 0
+    skipped_slots = []
+
+    for row in range(2, ws.max_row + 1):
+        bit_val = ws.cell(row=row, column=COL_BIT).value
+        if not isinstance(bit_val, (int, float)) or isinstance(bit_val, bool):
+            continue
+
+        # Skip if tag already filled
+        existing = ws.cell(row=row, column=COL_TAG).value
+        if existing and str(existing).strip():
+            continue
+
+        mod_type = str(cell_val(row, COL_MOD_TYPE) or "").strip()
+        if not mod_type or mod_type not in _TAG_PREFIX:
+            slot = cell_val(row, COL_SLOT)
+            slot_num = int(slot) if isinstance(slot, (int, float)) else None
+            if slot_num is not None and slot_num not in skipped_slots:
+                skipped_slots.append(slot_num)
+            continue
+
+        routine = str(cell_val(row, COL_ROUTINE) or "").strip()
+        tag = _generate_tag(mod_type, routine, int(bit_val))
+        ws.cell(row=row, column=COL_TAG).value = tag
+        filled += 1
+
+    wb.save(path)
+    return filled, skipped_slots
 
 
 def _read_rack_sheet(ws) -> Rack:

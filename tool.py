@@ -164,6 +164,58 @@ def cmd_add_module(args):
     print(f"\nAdded {num_modules} module(s) to rack '{rack_name}'.")
 
 
+def cmd_fill_tags(args):
+    path = _get_workbook_path(args.workbook)
+
+    from openpyxl import load_workbook as lw
+    wb = lw(path, read_only=True)
+    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET)]
+    wb.close()
+
+    if not rack_names:
+        print("No racks found. Use 'add-rack' first.")
+        sys.exit(1)
+
+    print()
+    print("Available racks:")
+    for i, name in enumerate(rack_names, 1):
+        print(f"  {i}. {name}")
+    print(f"  {len(rack_names) + 1}. All racks")
+
+    while True:
+        raw = input("Select rack (number or name): ").strip()
+        if raw.isdigit():
+            n = int(raw)
+            if 1 <= n <= len(rack_names):
+                selected = [rack_names[n - 1]]
+                break
+            if n == len(rack_names) + 1:
+                selected = rack_names
+                break
+        elif raw in rack_names:
+            selected = [raw]
+            break
+        print("  Invalid selection.")
+
+    print()
+    total_filled = 0
+    for rack_name in selected:
+        try:
+            filled, skipped_slots = excel_manager.fill_tags(path, rack_name)
+        except ValueError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+
+        print(f"  {rack_name}: {filled} tag(s) filled.", end="")
+        if skipped_slots:
+            slots_str = ", ".join(str(s) for s in sorted(skipped_slots))
+            print(f"  Warning: slot(s) {slots_str} skipped (module type not set).", end="")
+        print()
+        total_filled += filled
+
+    print(f"\nDone. {total_filled} tag(s) written.")
+
+
 def cmd_generate(args):
     path = _get_workbook_path(args.workbook)
     output_dir = os.path.abspath(args.output) if args.output else os.path.dirname(os.path.abspath(path))
@@ -245,6 +297,18 @@ def main():
     sub.add_parser("init",       help="Create a new project workbook")
     sub.add_parser("add-rack",   help="Add a rack to the workbook")
     sub.add_parser("add-module", help="Add modules to an existing rack")
+    sub.add_parser(
+        "fill-tags",
+        help="Auto-fill blank tag names in column E",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Tag names are generated from the module type (column A) and routine name (column C).\n"
+            "Routine names must start with R#### for the drawing number to be used in the tag\n"
+            "(e.g. R4103, where 4103 is the drawing sheet number where the I/O module is shown).\n"
+            "Rows where column E is already filled are never overwritten.\n"
+            "Rows where column A (module type) is not set are skipped with a warning."
+        ),
+    )
     sub.add_parser("generate",   help="Generate .l5x files from the workbook")
     sub.add_parser("list",       help="List racks and modules in the workbook")
 
@@ -254,6 +318,7 @@ def main():
         "init":       cmd_init,
         "add-rack":   cmd_add_rack,
         "add-module": cmd_add_module,
+        "fill-tags":  cmd_fill_tags,
         "generate":   cmd_generate,
         "list":       cmd_list,
     }
