@@ -9,7 +9,7 @@ Produces up to two files:
 import os
 from datetime import datetime
 
-from models import Project, Rack, Module, Bit, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES
+from models import Project, Rack, Module, Bit, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, IO_FAMILY_FLEX
 
 
 # ---------------------------------------------------------------------------
@@ -305,13 +305,20 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
 
     for bit in mod.bits:
         tag = bit.tag
-        slot = mod.slot
         b = bit.index
+        # Flex IO (1794): first module is slot 0; Point IO (1734): first module is slot 1
+        slot = mod.slot - 1 if rack.io_family == IO_FAMILY_FLEX else mod.slot
 
         if mod.type == "Input":
-            ladder = f"XIC({rack.name}:{slot}:I.{b})OTE({tag})"
+            if rack.io_family == IO_FAMILY_FLEX:
+                ladder = f"XIC({rack.name}:{slot}:I.Data.{b})OTE({tag})"
+            else:
+                ladder = f"XIC({rack.name}:{slot}:I.{b})OTE({tag})"
         elif mod.type == "Output":
-            ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.{b})"
+            if rack.io_family == IO_FAMILY_FLEX:
+                ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Data.{b})"
+            else:
+                ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.{b})"
         elif mod.type == "Analog Input":
             ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
         elif mod.type == "Analog Output":
@@ -383,21 +390,21 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
         if not mod.routine:
             continue
 
-        slot = mod.slot
-
         # Safety modules: fault logic lives in the safety program — add a placeholder NOP
         if mod.type in SAFETY_TYPES:
-            comment = f"Module Fault Detect Logic is in Safety Program\nPlaceholder for Point Bus Module {slot}"
+            comment = f"Module Fault Detect Logic is in Safety Program\nPlaceholder for Point Bus Module {mod.slot}"
             rungs.append(_rung_xml(rung_num, comment, "NOP()"))
             rung_num += 1
             continue
 
-        mod_comment = f"Module Fault Detect Logic\nPoint Bus Module {slot}"
+        # Flex IO (1794): first module is slot 0; Point IO (1734): first module is slot 1
+        addr_slot = mod.slot - 1 if rack.io_family == IO_FAMILY_FLEX else mod.slot
+        mod_comment = f"Module Fault Detect Logic\nPoint Bus Module {addr_slot}"
 
-        if slot < 32:
+        if rack.io_family == IO_FAMILY_FLEX:
             if mod.type in DIGITAL_TYPES:
                 ladder = (
-                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits0_31.{slot}) ,\n"
+                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits.{addr_slot}) ,\n"
                     f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}_S_Fault)"
                 )
@@ -407,10 +414,23 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
                     f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}_S_Fault)"
                 )
-        elif slot < 63:
+        elif addr_slot < 32:
             if mod.type in DIGITAL_TYPES:
                 ladder = (
-                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits32_63.{slot - 32}) ,\n"
+                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits0_31.{addr_slot}) ,\n"
+                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}_S_Fault)"
+                )
+            else:
+                ladder = (
+                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) NEQ({mod.routine}._S_FaultCode,0) ,\n"
+                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}_S_Fault)"
+                )
+        elif addr_slot < 63:
+            if mod.type in DIGITAL_TYPES:
+                ladder = (
+                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits32_63.{addr_slot - 32}) ,\n"
                     f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}_S_Fault)"
                 )
@@ -421,7 +441,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
                     f"OTE({mod.routine}_S_Fault)"
                 )
         else:
-            continue  # slot >= 63 not handled by VBA either
+            continue  # slot >= 63 not handled
 
         rungs.append(_rung_xml(rung_num, mod_comment, ladder))
         rung_num += 1

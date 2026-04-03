@@ -8,6 +8,10 @@ ALL_MODULE_TYPES = sorted(DIGITAL_TYPES | ANALOG_TYPES | SAFETY_TYPES)
 
 MODULE_TYPE_DROPDOWN = "Input,Output,Safety Input,Safety Output,Analog Input,Analog Output,Thermocouple/RTD"
 
+IO_FAMILY_POINT = "1734"   # Point IO
+IO_FAMILY_FLEX  = "1794"   # Flex IO
+IO_FAMILY_DROPDOWN = f"{IO_FAMILY_POINT},{IO_FAMILY_FLEX}"
+
 
 @dataclass
 class Bit:
@@ -28,6 +32,7 @@ class Module:
 @dataclass
 class Rack:
     name: str
+    io_family: str = IO_FAMILY_POINT  # "1734" (Point IO) or "1794" (Flex IO)
     modules: list = field(default_factory=list)  # list[Module]
 
 

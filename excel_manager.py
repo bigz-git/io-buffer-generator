@@ -29,7 +29,7 @@ from openpyxl.styles import Alignment, Border, Side, Font
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import get_column_letter
 
-from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN
+from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, IO_FAMILY_POINT, IO_FAMILY_FLEX
 
 COVER_SHEET = "Cover Sheet"
 CAD_SHEET = "CAD_Descriptions"
@@ -86,8 +86,9 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_netwo
 
     ws["A5"] = "Rack Name"
     ws["B5"] = "IO Bit Count"
+    ws["C5"] = "IO Family"
 
-    for cell in [ws["A5"], ws["B5"]]:
+    for cell in [ws["A5"], ws["B5"], ws["C5"]]:
         cell.font = Font(bold=True)
 
     ws.column_dimensions["A"].width = 30
@@ -99,7 +100,7 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_netwo
 # Add rack
 # ---------------------------------------------------------------------------
 
-def add_rack(path: str, rack_name: str, modules: list) -> None:
+def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMILY_POINT) -> None:
     """
     modules: list of (num_bits: int,) for each module — slot numbers auto-assigned 1..N.
     Creates a new rack sheet and updates the Cover Sheet summary.
@@ -111,7 +112,7 @@ def add_rack(path: str, rack_name: str, modules: list) -> None:
 
     ws = wb.create_sheet(rack_name)
     _write_rack_sheet(ws, modules)
-    _append_cover_summary(wb[COVER_SHEET], rack_name)
+    _append_cover_summary(wb[COVER_SHEET], rack_name, io_family)
 
     wb.save(path)
 
@@ -189,7 +190,7 @@ def _write_rack_sheet(ws, modules: list) -> None:
 
 
 
-def _append_cover_summary(ws_cover, rack_name: str) -> None:
+def _append_cover_summary(ws_cover, rack_name: str, io_family: str = IO_FAMILY_POINT) -> None:
     # Find next empty row starting at row 6
     row = 6
     while ws_cover.cell(row=row, column=COL_MOD_TYPE).value is not None:
@@ -197,6 +198,7 @@ def _append_cover_summary(ws_cover, rack_name: str) -> None:
     ws_cover.cell(row=row, column=COL_MOD_TYPE, value=rack_name)
     # Bit count will be filled at generate time; leave a placeholder for now
     ws_cover.cell(row=row, column=COL_SLOT, value=f"=COUNTA('{rack_name}'!E2:E5000)")
+    ws_cover.cell(row=row, column=3, value=io_family)
 
 
 # ---------------------------------------------------------------------------
@@ -296,10 +298,19 @@ def read_project(path: str) -> Project:
             "or IO Network Card Name (C2)."
         )
 
+    # Build io_family map from cover sheet rack summary rows (A6+, C6+)
+    family_map = {}
+    for row in range(6, ws_cover.max_row + 1):
+        rname = ws_cover.cell(row=row, column=1).value  # column A — rack name
+        fam   = ws_cover.cell(row=row, column=3).value  # column C — IO family
+        if rname and str(rname).strip():
+            family_map[str(rname).strip()] = str(fam).strip() if fam else IO_FAMILY_POINT
+
     racks = []
     # Rack sheets start at index 2 (0-based), skipping Cover Sheet and CAD_Descriptions
     for ws in wb.worksheets[2:]:
         rack = _read_rack_sheet(ws)
+        rack.io_family = family_map.get(ws.title, IO_FAMILY_POINT)
         if rack.modules:
             racks.append(rack)
 

@@ -17,6 +17,7 @@ import sys
 
 import excel_manager
 import l5x_generator
+from models import IO_FAMILY_POINT, IO_FAMILY_FLEX
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +102,20 @@ def cmd_add_rack(args):
 
     print()
     rack_name = _prompt("Rack name")
+
+    print("  IO Family:")
+    print(f"    1. {IO_FAMILY_POINT} (Point IO)")
+    print(f"    2. {IO_FAMILY_FLEX}  (Flex IO)")
+    while True:
+        raw = input("  Select IO family [1]: ").strip()
+        if not raw or raw == "1":
+            io_family = IO_FAMILY_POINT
+            break
+        if raw == "2":
+            io_family = IO_FAMILY_FLEX
+            break
+        print("  Please enter 1 or 2.")
+
     num_modules = _prompt_int("Number of IO modules in this rack")
 
     print()
@@ -110,7 +125,7 @@ def cmd_add_rack(args):
         modules.append(bits)
 
     try:
-        excel_manager.add_rack(path, rack_name, modules)
+        excel_manager.add_rack(path, rack_name, modules, io_family)
     except ValueError as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -274,7 +289,7 @@ def cmd_list(args):
 
     for rack in project.racks:
         total_bits = sum(len(m.bits) for m in rack.modules)
-        print(f"\n  {rack.name}  ({len(rack.modules)} module(s), {total_bits} channels)")
+        print(f"\n  {rack.name}  ({len(rack.modules)} module(s), {total_bits} channels)  [{rack.io_family}]")
         for mod in rack.modules:
             routine = mod.routine or "(no routine name)"
             print(f"    Slot {mod.slot:>2}  {mod.type:<20}  {len(mod.bits):>2} channels  → {routine}")
