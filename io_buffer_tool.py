@@ -75,6 +75,7 @@ def _get_workbook_path(args_path: str | None) -> str:
 # ---------------------------------------------------------------------------
 
 def cmd_init(args):
+    os.system("")  # enable ANSI escape codes on Windows
     _BOLD  = "\033[1m"
     _CYAN  = "\033[94m"
     _WHITE = "\033[97m"
