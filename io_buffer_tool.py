@@ -75,6 +75,14 @@ def _get_workbook_path(args_path: str | None) -> str:
 # ---------------------------------------------------------------------------
 
 def cmd_init(args):
+    _BOLD  = "\033[1m"
+    _CYAN  = "\033[94m"
+    _WHITE = "\033[97m"
+    _RESET = "\033[0m"
+    print(f"\n{_BOLD}{_WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print(f"  {_CYAN}Quad Plus{_WHITE}  |  IO Buffer Generator Tool")
+    print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{_RESET}\n")
+
     filename = _prompt("Workbook filename (without .xlsx)", "project")
     if not filename.endswith(".xlsx"):
         filename += ".xlsx"
