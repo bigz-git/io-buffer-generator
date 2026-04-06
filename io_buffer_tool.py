@@ -17,7 +17,7 @@ import sys
 
 import excel_manager
 import l5x_generator
-from models import IO_FAMILY_POINT, IO_FAMILY_FLEX
+from models import IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +115,7 @@ def cmd_add_rack(args):
     print("  IO Family:")
     print(f"    1. {IO_FAMILY_POINT} (Point IO)")
     print(f"    2. {IO_FAMILY_FLEX}  (Flex IO)")
+    print(f"    3. {IO_FAMILY_CLX}   (ControlLogix IO)")
     while True:
         raw = input("  Select IO family [1]: ").strip()
         if not raw or raw == "1":
@@ -123,7 +124,10 @@ def cmd_add_rack(args):
         if raw == "2":
             io_family = IO_FAMILY_FLEX
             break
-        print("  Please enter 1 or 2.")
+        if raw == "3":
+            io_family = IO_FAMILY_CLX
+            break
+        print("  Please enter 1, 2, or 3.")
 
     num_modules = _prompt_int("Number of IO modules in this rack")
 

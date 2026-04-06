@@ -10,7 +10,8 @@ MODULE_TYPE_DROPDOWN = "Input,Output,Safety Input,Safety Output,Analog Input,Ana
 
 IO_FAMILY_POINT = "1734"   # Point IO
 IO_FAMILY_FLEX  = "1794"   # Flex IO
-IO_FAMILY_DROPDOWN = f"{IO_FAMILY_POINT},{IO_FAMILY_FLEX}"
+IO_FAMILY_CLX   = "1756"   # ControlLogix IO
+IO_FAMILY_DROPDOWN = f"{IO_FAMILY_POINT},{IO_FAMILY_FLEX},{IO_FAMILY_CLX}"
 
 
 @dataclass
