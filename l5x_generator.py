@@ -310,12 +310,12 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
         slot = mod.slot - 1 if rack.io_family == IO_FAMILY_FLEX else mod.slot
 
         if mod.type == "Input":
-            if rack.io_family == IO_FAMILY_FLEX:
+            if rack.io_family == IO_FAMILY_FLEX and len(mod.bits) == 32:
                 ladder = f"XIC({rack.name}:{slot}:I.Data.{b})OTE({tag})"
             else:
                 ladder = f"XIC({rack.name}:{slot}:I.{b})OTE({tag})"
         elif mod.type == "Output":
-            if rack.io_family == IO_FAMILY_FLEX:
+            if rack.io_family == IO_FAMILY_FLEX and len(mod.bits) == 32:
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Data.{b})"
             else:
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.{b})"
