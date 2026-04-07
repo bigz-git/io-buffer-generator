@@ -247,6 +247,44 @@ def cmd_fill_tags(args):
     print(f"\nDone. {total_filled} tag(s) written.")
 
 
+def cmd_validate(args):
+    path = _get_workbook_path(args.workbook)
+
+    print("Validating workbook...")
+    try:
+        project = excel_manager.read_project(path)
+    except ValueError as e:
+        print(f"\nError: {e}")
+        sys.exit(1)
+
+    warnings = []
+
+    for rack in project.racks:
+        for mod in rack.modules:
+            if not mod.routine:
+                warnings.append(f"  Rack '{rack.name}', slot {mod.slot} ({mod.type}): no routine name.")
+            missing_tags = sum(1 for b in mod.bits if not b.tag)
+            if missing_tags:
+                warnings.append(f"  Rack '{rack.name}', slot {mod.slot} ({mod.routine or '?'}): "
+                                f"{missing_tags} of {len(mod.bits)} tag names missing.")
+            missing_desc = sum(1 for b in mod.bits if not b.description)
+            if missing_desc:
+                warnings.append(f"  Rack '{rack.name}', slot {mod.slot} ({mod.routine or '?'}): "
+                                f"{missing_desc} of {len(mod.bits)} descriptions missing.")
+
+    if warnings:
+        print(f"\nWarnings ({len(warnings)}):")
+        for w in warnings:
+            print(w)
+    else:
+        print("\nNo warnings.")
+
+    total_tags  = sum(len(m.bits) for r in project.racks for m in r.modules)
+    total_mods  = sum(len(r.modules) for r in project.racks)
+    print(f"\nSummary: {len(project.racks)} rack(s), {total_mods} module(s), {total_tags} channel(s).")
+    print("Workbook is valid." if not warnings else "Workbook passed structural checks but has warnings above.")
+
+
 def cmd_fill_descriptions(args):
     path = _get_workbook_path(args.workbook)
 
@@ -379,6 +417,7 @@ def main():
     sub = parser.add_subparsers(dest="command", metavar="command")
     sub.required = True
 
+    sub.add_parser("validate",    help="Check workbook for errors and warnings without generating files")
     sub.add_parser("init",       help="Create a new project workbook")
     sub.add_parser("add-rack",   help="Add a rack to the workbook")
     sub.add_parser("add-module", help="Add modules to an existing rack")
@@ -401,6 +440,7 @@ def main():
     args = parser.parse_args()
 
     commands = {
+        "validate":          cmd_validate,
         "init":       cmd_init,
         "add-rack":   cmd_add_rack,
         "add-module": cmd_add_module,
