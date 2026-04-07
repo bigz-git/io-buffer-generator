@@ -247,6 +247,53 @@ def cmd_fill_tags(args):
     print(f"\nDone. {total_filled} tag(s) written.")
 
 
+def cmd_fill_descriptions(args):
+    path = _get_workbook_path(args.workbook)
+
+    from openpyxl import load_workbook as lw
+    wb = lw(path, read_only=True)
+    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET)]
+    wb.close()
+
+    if not rack_names:
+        print("No racks found. Use 'add-rack' first.")
+        sys.exit(1)
+
+    print()
+    print("Available racks:")
+    for i, name in enumerate(rack_names, 1):
+        print(f"  {i}. {name}")
+    print(f"  {len(rack_names) + 1}. All racks")
+
+    while True:
+        raw = input("Select rack (number or name): ").strip()
+        if raw.isdigit():
+            n = int(raw)
+            if 1 <= n <= len(rack_names):
+                selected = [rack_names[n - 1]]
+                break
+            if n == len(rack_names) + 1:
+                selected = rack_names
+                break
+        elif raw in rack_names:
+            selected = [raw]
+            break
+        print("  Invalid selection.")
+
+    print()
+    total_filled = 0
+    for rack_name in selected:
+        try:
+            filled = excel_manager.fill_descriptions(path, rack_name)
+        except ValueError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+        print(f"  {rack_name}: {filled} description(s) filled.")
+        total_filled += filled
+
+    print(f"\nDone. {total_filled} description(s) written.")
+
+
 def cmd_generate(args):
     path = _get_workbook_path(args.workbook)
     output_dir = os.path.abspath(args.output) if args.output else os.path.dirname(os.path.abspath(path))
@@ -347,6 +394,7 @@ def main():
             "Rows where column A (module type) is not set are skipped with a warning."
         ),
     )
+    sub.add_parser("fill-descriptions", help="Fill blank tag descriptions in column F with 'spare'")
     sub.add_parser("generate",   help="Generate .l5x files from the workbook")
     sub.add_parser("list",       help="List racks and modules in the workbook")
 
@@ -356,8 +404,9 @@ def main():
         "init":       cmd_init,
         "add-rack":   cmd_add_rack,
         "add-module": cmd_add_module,
-        "fill-tags":  cmd_fill_tags,
-        "generate":   cmd_generate,
+        "fill-tags":         cmd_fill_tags,
+        "fill-descriptions": cmd_fill_descriptions,
+        "generate":          cmd_generate,
         "list":       cmd_list,
     }
     commands[args.command](args)

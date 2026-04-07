@@ -436,6 +436,36 @@ def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
     return filled, skipped_slots
 
 
+def fill_descriptions(path: str, rack_name: str) -> int:
+    """
+    Fill blank column-F (description) cells with 'spare'.
+    Only touches rows that have a bit index in column D.
+    Never overwrites existing values.
+    Returns the count of cells filled.
+    """
+    wb = load_workbook(path)
+    if rack_name not in wb.sheetnames:
+        raise ValueError(f"Rack '{rack_name}' not found in workbook.")
+
+    ws = wb[rack_name]
+    filled = 0
+
+    for row in range(2, ws.max_row + 1):
+        bit_val = ws.cell(row=row, column=COL_BIT).value
+        if not isinstance(bit_val, (int, float)) or isinstance(bit_val, bool):
+            continue
+
+        existing = ws.cell(row=row, column=COL_DESC).value
+        if existing and str(existing).strip():
+            continue
+
+        ws.cell(row=row, column=COL_DESC).value = "spare"
+        filled += 1
+
+    wb.save(path)
+    return filled
+
+
 def _read_rack_sheet(ws) -> Rack:
     rack = Rack(name=ws.title)
 
