@@ -302,9 +302,11 @@ def cmd_fill_tags(args):
             if n == len(rack_names) + 1:
                 selected = rack_names
                 break
-        elif raw in rack_names:
-            selected = [raw]
-            break
+        else:
+            match = next((n for n in rack_names if n.lower() == raw.lower()), None)
+            if match:
+                selected = [match]
+                break
         print("  Invalid selection.")
 
     print()
