@@ -87,6 +87,8 @@ def cmd_init(args):
     filename = _prompt("Workbook filename (without .xlsx)", "project")
     if not filename.endswith(".xlsx"):
         filename += ".xlsx"
+    project_number      = _prompt("Project Number")
+    project_description = _prompt("Project Description")
     out_dir = os.path.abspath(args.output) if args.output else os.getcwd()
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, filename)
@@ -102,7 +104,8 @@ def cmd_init(args):
     controller_name  = _prompt("Controller Name")
     io_network_card  = _prompt("IO Network Card Name")
 
-    excel_manager.create_workbook(path, software_version, controller_name, io_network_card)
+    excel_manager.create_workbook(path, software_version, controller_name, io_network_card,
+                                  project_number, project_description)
     print(f"\nCreated: {filename}")
 
 

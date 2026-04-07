@@ -51,13 +51,15 @@ HEADER_BORDER = Border(bottom=Side(style="medium"))
 # Workbook creation
 # ---------------------------------------------------------------------------
 
-def create_workbook(path: str, software_version: str, controller_name: str, io_network_card: str) -> None:
+def create_workbook(path: str, software_version: str, controller_name: str, io_network_card: str,
+                    project_number: str = "", project_description: str = "") -> None:
     wb = Workbook()
 
     # Sheet 1 — Cover Sheet
     ws_cover = wb.active
     ws_cover.title = COVER_SHEET
-    _setup_cover_sheet(ws_cover, software_version, controller_name, io_network_card)
+    _setup_cover_sheet(ws_cover, software_version, controller_name, io_network_card,
+                       project_number, project_description)
 
     # Sheet 2 — CAD Descriptions placeholder (keeps sheet indices consistent with VBA)
     wb.create_sheet(CAD_SHEET)
@@ -65,14 +67,19 @@ def create_workbook(path: str, software_version: str, controller_name: str, io_n
     wb.save(path)
 
 
-def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_network_card: str) -> None:
+def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_network_card: str,
+                       project_number: str = "", project_description: str = "") -> None:
     ws["A1"] = "Software Version"
     ws["B1"] = "Controller Name"
     ws["C1"] = "IO Network Card Name"
+    ws["D1"] = "Project Number"
+    ws["E1"] = "Project Description"
 
     ws["A2"] = software_version
     ws["B2"] = controller_name
     ws["C2"] = io_network_card
+    ws["D2"] = project_number
+    ws["E2"] = project_description
 
     note = (
         "Note: For auto tag fill (fill-tags command), routine names in rack sheets must start "
@@ -81,7 +88,7 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_netwo
     ws["A4"] = note
     ws["A4"].font = Font(italic=True)
     ws["A4"].alignment = Alignment(wrap_text=True)
-    ws.merge_cells("A4:C4")
+    ws.merge_cells("A4:E4")
     ws.row_dimensions[4].height = 45
 
     ws["A5"] = "Rack Name"
@@ -94,6 +101,8 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_netwo
     ws.column_dimensions["A"].width = 30
     ws.column_dimensions["B"].width = 15
     ws.column_dimensions["C"].width = 30
+    ws.column_dimensions["D"].width = 20
+    ws.column_dimensions["E"].width = 40
 
 
 # ---------------------------------------------------------------------------
@@ -288,9 +297,11 @@ def read_project(path: str) -> Project:
     wb = load_workbook(path, data_only=True)
     ws_cover = wb[COVER_SHEET]
 
-    software_version = str(ws_cover["A2"].value or "").strip()
-    controller_name  = str(ws_cover["B2"].value or "").strip()
-    io_network_card  = str(ws_cover["C2"].value or "").strip()
+    software_version    = str(ws_cover["A2"].value or "").strip()
+    controller_name     = str(ws_cover["B2"].value or "").strip()
+    io_network_card     = str(ws_cover["C2"].value or "").strip()
+    project_number      = str(ws_cover["D2"].value or "").strip()
+    project_description = str(ws_cover["E2"].value or "").strip()
 
     if not software_version or not controller_name or not io_network_card:
         raise ValueError(
@@ -318,6 +329,8 @@ def read_project(path: str) -> Project:
         software_version=software_version,
         controller_name=controller_name,
         io_network_card=io_network_card,
+        project_number=project_number,
+        project_description=project_description,
         racks=racks,
     )
 

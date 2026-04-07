@@ -42,4 +42,6 @@ class Project:
     software_version: str
     controller_name: str
     io_network_card: str
+    project_number: str = ""
+    project_description: str = ""
     racks: list = field(default_factory=list)  # list[Rack]
