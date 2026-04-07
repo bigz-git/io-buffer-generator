@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 from openpyxl import load_workbook
+from PIL import Image, ImageTk
 
 import excel_manager
 import l5x_generator
@@ -29,9 +30,11 @@ class App(tk.Tk):
         self.title("IO Buffer Generator")
         self.minsize(720, 420)
         try:
-            icon = tk.PhotoImage(file=os.path.join(os.path.dirname(__file__), "Quad Plus Brand Logo.png"))
-            self.iconphoto(True, icon)
-        except tk.TclError:
+            img = Image.open(os.path.join(os.path.dirname(__file__), "Quad Plus Brand Logo.png"))
+            icons = [ImageTk.PhotoImage(img.resize((s, s), Image.LANCZOS)) for s in (16, 32, 48)]
+            self.iconphoto(True, *icons)
+            self._icons = icons  # prevent garbage collection
+        except Exception:
             pass
         self._build_ui()
         self._auto_detect_workbook()
