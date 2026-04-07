@@ -29,7 +29,7 @@ from openpyxl.styles import Alignment, Border, Side, Font
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import get_column_letter
 
-from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
+from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
 
 COVER_SHEET = "Cover Sheet"
 CAD_SHEET = "CAD_Descriptions"
@@ -466,6 +466,7 @@ def _read_rack_sheet(ws) -> Rack:
         if isinstance(val, (int, float)) and not isinstance(val, bool):
             module_starts.append((row, int(val)))
 
+    seen_routines = {}  # routine name → first slot number, for duplicate detection
     for idx, (start_row, slot) in enumerate(module_starts):
         # Module ends one row before the next module start (or at max_row)
         if idx + 1 < len(module_starts):
@@ -487,6 +488,18 @@ def _read_rack_sheet(ws) -> Rack:
         if routine in ("ENTER ROUTINE NAME HERE", ""):
             routine = ""
 
+        if not routine:
+            raise ValueError(
+                f"Rack sheet '{ws.title}', slot {slot} (row {start_row}): "
+                f"PLC Routine Name is missing."
+            )
+        if routine in seen_routines:
+            raise ValueError(
+                f"Rack sheet '{ws.title}', slot {slot} (row {start_row}): "
+                f"PLC Routine Name '{routine}' is already used by slot {seen_routines[routine]}."
+            )
+        seen_routines[routine] = slot
+
         bits = []
         for row in range(start_row, end_row + 1):
             bit_idx = ws.cell(row=row, column=COL_BIT).value
@@ -500,7 +513,17 @@ def _read_rack_sheet(ws) -> Rack:
                 row_drawing = ""
             bits.append(Bit(index=int(bit_idx), tag=tag, description=desc, drawing=row_drawing))
 
-        if mod_type:
-            rack.modules.append(Module(slot=slot, type=mod_type, routine=routine, bits=bits))
+        if not mod_type:
+            raise ValueError(
+                f"Rack sheet '{ws.title}', slot {slot} (row {start_row}): Module Type is blank. "
+                f"Must be one of: {', '.join(ALL_MODULE_TYPES)}."
+            )
+        if mod_type not in ALL_MODULE_TYPES:
+            raise ValueError(
+                f"Rack sheet '{ws.title}', slot {slot} (row {start_row}): "
+                f"Module Type '{mod_type}' is not recognized. "
+                f"Must be one of: {', '.join(ALL_MODULE_TYPES)}."
+            )
+        rack.modules.append(Module(slot=slot, type=mod_type, routine=routine, bits=bits))
 
     return rack
