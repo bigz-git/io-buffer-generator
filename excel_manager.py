@@ -29,7 +29,7 @@ from openpyxl.styles import Alignment, Border, Side, Font
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import get_column_letter
 
-from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, IO_FAMILY_POINT, IO_FAMILY_FLEX
+from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
 
 COVER_SHEET = "Cover Sheet"
 CAD_SHEET = "CAD_Descriptions"
@@ -310,18 +310,37 @@ def read_project(path: str) -> Project:
         )
 
     # Build io_family map from cover sheet rack summary rows (A6+, C6+)
+    valid_families = {IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX}
     family_map = {}
     for row in range(6, ws_cover.max_row + 1):
         rname = ws_cover.cell(row=row, column=1).value  # column A — rack name
         fam   = ws_cover.cell(row=row, column=3).value  # column C — IO family
         if rname and str(rname).strip():
-            family_map[str(rname).strip()] = str(fam).strip() if fam else IO_FAMILY_POINT
+            rname_str = str(rname).strip()
+            if not fam or not str(fam).strip():
+                raise ValueError(
+                    f"Cover Sheet row {row}: IO Family is missing for rack '{rname_str}'. "
+                    f"Must be one of: {', '.join(sorted(valid_families))}."
+                )
+            fam_str = str(fam).strip()
+            if fam_str not in valid_families:
+                raise ValueError(
+                    f"Cover Sheet row {row}: IO Family '{fam_str}' for rack '{rname_str}' is not recognized. "
+                    f"Must be one of: {', '.join(sorted(valid_families))}."
+                )
+            family_map[rname_str] = fam_str
 
     racks = []
     # Rack sheets start at index 2 (0-based), skipping Cover Sheet and CAD_Descriptions
     for ws in wb.worksheets[2:]:
         rack = _read_rack_sheet(ws)
-        rack.io_family = family_map.get(ws.title, IO_FAMILY_POINT)
+        if ws.title not in family_map:
+            raise ValueError(
+                f"Rack sheet '{ws.title}' has no corresponding entry on the Cover Sheet. "
+                f"Add it to the Cover Sheet with a valid IO Family "
+                f"({', '.join(sorted(valid_families))})."
+            )
+        rack.io_family = family_map[ws.title]
         if rack.modules:
             racks.append(rack)
 
