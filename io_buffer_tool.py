@@ -189,6 +189,47 @@ def cmd_rename_rack(args):
     print(f"\nRenamed '{old_name}' → '{new_name}'.")
 
 
+def cmd_remove_rack(args):
+    path = _get_workbook_path(args.workbook)
+
+    from openpyxl import load_workbook as lw
+    wb = lw(path, read_only=True)
+    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET)]
+    wb.close()
+
+    if not rack_names:
+        print("No racks found in workbook.")
+        sys.exit(1)
+
+    print()
+    print("Available racks:")
+    for i, name in enumerate(rack_names, 1):
+        print(f"  {i}. {name}")
+
+    while True:
+        raw = input("Select rack to remove (number or name): ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(rack_names):
+            rack_name = rack_names[int(raw) - 1]
+            break
+        if raw in rack_names:
+            rack_name = raw
+            break
+        print("  Invalid selection.")
+
+    confirm = input(f"Remove rack '{rack_name}'? This cannot be undone. [y/N]: ").strip().lower()
+    if confirm != "y":
+        print("Aborted.")
+        return
+
+    try:
+        excel_manager.remove_rack(path, rack_name)
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+    print(f"\nRemoved rack '{rack_name}'.")
+
+
 def cmd_add_module(args):
     path = _get_workbook_path(args.workbook)
 
@@ -459,6 +500,7 @@ def main():
     sub.add_parser("init",       help="Create a new project workbook")
     sub.add_parser("add-rack",    help="Add a rack to the workbook")
     sub.add_parser("rename-rack", help="Rename an existing rack")
+    sub.add_parser("remove-rack", help="Remove a rack sheet and its Cover Sheet entry")
     sub.add_parser("add-module",  help="Add modules to an existing rack")
     sub.add_parser(
         "fill-tags",
@@ -483,6 +525,7 @@ def main():
         "init":       cmd_init,
         "add-rack":    cmd_add_rack,
         "rename-rack": cmd_rename_rack,
+        "remove-rack": cmd_remove_rack,
         "add-module":  cmd_add_module,
         "fill-tags":         cmd_fill_tags,
         "fill-descriptions": cmd_fill_descriptions,

@@ -1,1 +1,1 @@
-# point-io-buffer-generator
+# io-buffer-generator

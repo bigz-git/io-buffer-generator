@@ -472,6 +472,37 @@ def rename_rack(path: str, old_name: str, new_name: str) -> None:
     wb.save(path)
 
 
+def remove_rack(path: str, rack_name: str) -> None:
+    """
+    Delete a rack sheet and its Cover Sheet summary row.
+    Raises ValueError if rack_name doesn't exist.
+    """
+    wb = load_workbook(path)
+
+    if rack_name not in wb.sheetnames:
+        raise ValueError(f"Rack '{rack_name}' not found in workbook.")
+
+    # Remove the rack sheet
+    del wb[rack_name]
+
+    # Remove the Cover Sheet summary row for this rack
+    ws_cover = wb[COVER_SHEET]
+    found = False
+    for row in range(6, ws_cover.max_row + 1):
+        cell_name = ws_cover.cell(row=row, column=COL_MOD_TYPE)
+        if cell_name.value == rack_name:
+            ws_cover.delete_rows(row)
+            found = True
+            break
+
+    if not found:
+        raise ValueError(
+            f"Rack sheet '{rack_name}' was deleted, but no matching row was found on the Cover Sheet."
+        )
+
+    wb.save(path)
+
+
 def fill_descriptions(path: str, rack_name: str) -> int:
     """
     Fill blank column-F (description) cells with 'spare'.
