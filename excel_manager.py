@@ -531,7 +531,7 @@ def _read_rack_sheet(ws) -> Rack:
                     f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
                     f"Tag '{tag}' is invalid for module type '{mod_type}' — expected a '.' (e.g. ROUTINE_NAME.0)."
                 )
-            if is_analog and "[" not in tag:
+            if is_analog and ("[" not in tag or "]" not in tag):
                 raise ValueError(
                     f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
                     f"Tag '{tag}' is invalid for module type '{mod_type}' — expected '[]' (e.g. ROUTINE_NAME_AIN[0])."
