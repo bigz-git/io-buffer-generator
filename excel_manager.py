@@ -436,6 +436,42 @@ def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
     return filled, skipped_slots
 
 
+def rename_rack(path: str, old_name: str, new_name: str) -> None:
+    """
+    Rename a rack sheet and update the Cover Sheet summary row to match.
+    Raises ValueError if old_name doesn't exist or new_name is already taken.
+    """
+    wb = load_workbook(path)
+
+    if old_name not in wb.sheetnames:
+        raise ValueError(f"Rack '{old_name}' not found in workbook.")
+    if new_name in wb.sheetnames:
+        raise ValueError(f"A sheet named '{new_name}' already exists in workbook.")
+
+    # Rename the sheet
+    wb[old_name].title = new_name
+
+    # Update Cover Sheet: find the row where column A == old_name
+    ws_cover = wb[COVER_SHEET]
+    found = False
+    for row in range(6, ws_cover.max_row + 1):
+        cell_name = ws_cover.cell(row=row, column=COL_MOD_TYPE)
+        if cell_name.value == old_name:
+            cell_name.value = new_name
+            # Rebuild the COUNTA formula with the new sheet name
+            ws_cover.cell(row=row, column=COL_SLOT).value = f"=COUNTA('{new_name}'!E2:E5000)"
+            found = True
+            break
+
+    if not found:
+        raise ValueError(
+            f"Rack '{old_name}' was not found in the Cover Sheet summary. "
+            f"Sheet renamed, but Cover Sheet was not updated."
+        )
+
+    wb.save(path)
+
+
 def fill_descriptions(path: str, rack_name: str) -> int:
     """
     Fill blank column-F (description) cells with 'spare'.

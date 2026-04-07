@@ -7,7 +7,7 @@
 - generate hardware?? - is this a bad idea?
 - readme update with instructions on usage
 - validate command - run all error-checking from read_project without generating files; lets you catch tag/routine name errors incrementally as you fill in the sheet instead of only at generate time - DONE
-- rename-rack command - rename a rack sheet and update the Cover Sheet summary row to match, without opening Excel
+- rename-rack command - rename a rack sheet and update the Cover Sheet summary row to match, without opening Excel - DONE
 - --dry-run flag on generate - print what files would be written and their tag/routine counts without writing anything
 - fill-drawings command - same pattern as fill-descriptions; prompts for a drawing filename and fills blank column G cells for a selected rack (currently left as "ENTER DRAWING NAME HERE" placeholder)
 - summary command / enhanced list - show counts of filled vs. blank tags and descriptions per rack so you can see which racks are ready to generate vs. still incomplete

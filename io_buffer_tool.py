@@ -151,6 +151,44 @@ def cmd_add_rack(args):
     print(f"Open {os.path.basename(path)} to fill in tag names, descriptions, and routine names.")
 
 
+def cmd_rename_rack(args):
+    path = _get_workbook_path(args.workbook)
+
+    from openpyxl import load_workbook as lw
+    wb = lw(path, read_only=True)
+    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET)]
+    wb.close()
+
+    if not rack_names:
+        print("No racks found in workbook.")
+        sys.exit(1)
+
+    print()
+    print("Available racks:")
+    for i, name in enumerate(rack_names, 1):
+        print(f"  {i}. {name}")
+
+    while True:
+        raw = input("Select rack to rename (number or name): ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(rack_names):
+            old_name = rack_names[int(raw) - 1]
+            break
+        if raw in rack_names:
+            old_name = raw
+            break
+        print("  Invalid selection.")
+
+    new_name = _prompt("New rack name")
+
+    try:
+        excel_manager.rename_rack(path, old_name, new_name)
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+    print(f"\nRenamed '{old_name}' → '{new_name}'.")
+
+
 def cmd_add_module(args):
     path = _get_workbook_path(args.workbook)
 
@@ -419,8 +457,9 @@ def main():
 
     sub.add_parser("validate",    help="Check workbook for errors and warnings without generating files")
     sub.add_parser("init",       help="Create a new project workbook")
-    sub.add_parser("add-rack",   help="Add a rack to the workbook")
-    sub.add_parser("add-module", help="Add modules to an existing rack")
+    sub.add_parser("add-rack",    help="Add a rack to the workbook")
+    sub.add_parser("rename-rack", help="Rename an existing rack")
+    sub.add_parser("add-module",  help="Add modules to an existing rack")
     sub.add_parser(
         "fill-tags",
         help="Auto-fill blank tag names in column E",
@@ -442,8 +481,9 @@ def main():
     commands = {
         "validate":          cmd_validate,
         "init":       cmd_init,
-        "add-rack":   cmd_add_rack,
-        "add-module": cmd_add_module,
+        "add-rack":    cmd_add_rack,
+        "rename-rack": cmd_rename_rack,
+        "add-module":  cmd_add_module,
         "fill-tags":         cmd_fill_tags,
         "fill-descriptions": cmd_fill_descriptions,
         "generate":          cmd_generate,
