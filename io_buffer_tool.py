@@ -275,6 +275,13 @@ def cmd_generate(args):
             print(m)
         print()
 
+    for rack in project.racks:
+        for mod in rack.modules:
+            missing_desc = sum(1 for b in mod.bits if not b.description)
+            if missing_desc:
+                print(f"Warning: Rack '{rack.name}', slot {mod.slot} ({mod.routine}): "
+                      f"{missing_desc} of {len(mod.bits)} tag descriptions are missing.")
+
     print("Generating L5X files...")
     try:
         written = l5x_generator.generate(project, output_dir)
