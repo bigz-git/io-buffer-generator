@@ -28,6 +28,11 @@ class App(tk.Tk):
         super().__init__()
         self.title("IO Buffer Generator")
         self.minsize(720, 420)
+        try:
+            icon = tk.PhotoImage(file=os.path.join(os.path.dirname(__file__), "Quad Plus Brand Logo.png"))
+            self.iconphoto(True, icon)
+        except tk.TclError:
+            pass
         self._build_ui()
         self._auto_detect_workbook()
 
