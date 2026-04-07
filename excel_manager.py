@@ -29,7 +29,7 @@ from openpyxl.styles import Alignment, Border, Side, Font
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import get_column_letter
 
-from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
+from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
 
 COVER_SHEET = "Cover Sheet"
 CAD_SHEET = "CAD_Descriptions"
@@ -467,6 +467,7 @@ def _read_rack_sheet(ws) -> Rack:
             module_starts.append((row, int(val)))
 
     seen_routines = {}  # routine name → first slot number, for duplicate detection
+    seen_tags = {}      # tag name → (slot, row), for duplicate detection across sheet
     for idx, (start_row, slot) in enumerate(module_starts):
         # Module ends one row before the next module start (or at max_row)
         if idx + 1 < len(module_starts):
@@ -500,6 +501,9 @@ def _read_rack_sheet(ws) -> Rack:
             )
         seen_routines[routine] = slot
 
+        is_analog = mod_type in ANALOG_TYPES
+        is_digital_or_safety = mod_type in (DIGITAL_TYPES | SAFETY_TYPES)
+
         bits = []
         for row in range(start_row, end_row + 1):
             bit_idx = ws.cell(row=row, column=COL_BIT).value
@@ -511,6 +515,29 @@ def _read_rack_sheet(ws) -> Rack:
             row_drawing = str(cell_val(row, COL_DRAWING) or "").strip()
             if row_drawing in ("ENTER DRAWING NAME HERE", ""):
                 row_drawing = ""
+
+            if not tag:
+                raise ValueError(
+                    f"Rack sheet '{ws.title}', slot {slot}, row {row}: Tag name (column E) is missing."
+                )
+            if tag in seen_tags:
+                first_slot, first_row = seen_tags[tag]
+                raise ValueError(
+                    f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
+                    f"Tag '{tag}' is already used by slot {first_slot} (row {first_row})."
+                )
+            if is_digital_or_safety and "." not in tag:
+                raise ValueError(
+                    f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
+                    f"Tag '{tag}' is invalid for module type '{mod_type}' — expected a '.' (e.g. ROUTINE_NAME.0)."
+                )
+            if is_analog and "[" not in tag:
+                raise ValueError(
+                    f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
+                    f"Tag '{tag}' is invalid for module type '{mod_type}' — expected '[]' (e.g. ROUTINE_NAME_AIN[0])."
+                )
+            seen_tags[tag] = (slot, row)
+
             bits.append(Bit(index=int(bit_idx), tag=tag, description=desc, drawing=row_drawing))
 
         if not mod_type:
