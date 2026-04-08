@@ -459,7 +459,7 @@ class InitDialog(_BaseDialog):
         ("filename",            "Filename (without .xlsx)",  "project"),
         ("project_number",      "Project Number",            ""),
         ("project_description", "Project Description",       ""),
-        ("software_version",    "Software Version",          "32.00"),
+        ("software_version",    "Software Version",          ""),
         ("controller_name",     "Controller Name",           ""),
         ("io_network_card",     "IO Network Card Name",      ""),
     ]

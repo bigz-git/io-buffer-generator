@@ -4,9 +4,10 @@ from dataclasses import dataclass, field
 DIGITAL_TYPES = {"Input", "Output"}
 ANALOG_TYPES = {"Analog Input", "Analog Output", "Thermocouple/RTD"}
 SAFETY_TYPES = {"Safety Input", "Safety Output"}
-ALL_MODULE_TYPES = sorted(DIGITAL_TYPES | ANALOG_TYPES | SAFETY_TYPES)
+OTHER_TYPES = {"Other"}
+ALL_MODULE_TYPES = sorted(DIGITAL_TYPES | ANALOG_TYPES | SAFETY_TYPES | OTHER_TYPES)
 
-MODULE_TYPE_DROPDOWN = "Input,Output,Safety Input,Safety Output,Analog Input,Analog Output,Thermocouple/RTD"
+MODULE_TYPE_DROPDOWN = "Input,Output,Safety Input,Safety Output,Analog Input,Analog Output,Thermocouple/RTD,Other"
 
 IO_FAMILY_POINT = "1734"   # Point IO
 IO_FAMILY_FLEX  = "1794"   # Flex IO

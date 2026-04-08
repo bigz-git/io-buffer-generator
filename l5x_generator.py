@@ -9,7 +9,7 @@ Produces up to two files:
 import os
 from datetime import datetime
 
-from models import Project, Rack, Module, Bit, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, IO_FAMILY_FLEX, IO_FAMILY_CLX
+from models import Project, Rack, Module, Bit, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_FLEX, IO_FAMILY_CLX
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +233,12 @@ def _build_ctrl_tags(project: Project):
             sep = _separator_char(mod)
             base = _module_base(mod.routine)
 
-            if mod.type in ANALOG_TYPES:
+            if mod.type in OTHER_TYPES:
+                # QP_MODULE_TAGS_v01 for GSV fault detect; no buffer I/O tag
+                ctrl.append(_tag_xml(mod.routine, "Standard", "QP_MODULE_TAGS_v01",
+                                     f"{mod.routine}\nModule", -1))
+
+            elif mod.type in ANALOG_TYPES:
                 # QP_MODULE_TAGS_v01 named after the routine (= module's I/O tree name)
                 ctrl.append(_tag_xml(mod.routine, "Standard", "QP_MODULE_TAGS_v01",
                                      f"{mod.routine}\nModule", -1))
@@ -287,6 +292,11 @@ def _buff_routine_comment(is_safety: bool = False) -> str:
 def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
     rungs = []
     rung_num = 0
+
+    # "Other" modules: blank routine with only the local JSR enable bit on rung 0
+    if mod.type in OTHER_TYPES:
+        rungs.append(_rung_xml(0, "", f"XIC(JSR_ENABLE_{mod.routine})NOP()"))
+        return _routine_xml(mod.routine, rungs)
 
     # MCR opening rung — safety routines use a simplified form (fault conditions
     # live in the safety controller, not exposed here)

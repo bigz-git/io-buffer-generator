@@ -29,7 +29,7 @@ from openpyxl.styles import Alignment, Border, Side, Font
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import get_column_letter
 
-from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
+from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
 
 COVER_SHEET = "Cover Sheet"
 CAD_SHEET = "CAD_Descriptions"
@@ -421,10 +421,12 @@ def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
 
         mod_type = str(cell_val(row, COL_MOD_TYPE) or "").strip()
         if not mod_type or mod_type not in _TAG_PREFIX:
-            slot = cell_val(row, COL_SLOT)
-            slot_num = int(slot) if isinstance(slot, (int, float)) else None
-            if slot_num is not None and slot_num not in skipped_slots:
-                skipped_slots.append(slot_num)
+            # "Other" modules intentionally have no tags — don't report as skipped
+            if mod_type not in OTHER_TYPES:
+                slot = cell_val(row, COL_SLOT)
+                slot_num = int(slot) if isinstance(slot, (int, float)) else None
+                if slot_num is not None and slot_num not in skipped_slots:
+                    skipped_slots.append(slot_num)
             continue
 
         routine = str(cell_val(row, COL_ROUTINE) or "").strip()
@@ -600,42 +602,44 @@ def _read_rack_sheet(ws) -> Rack:
 
         is_analog = mod_type in ANALOG_TYPES
         is_digital_or_safety = mod_type in (DIGITAL_TYPES | SAFETY_TYPES)
+        is_other = mod_type in OTHER_TYPES
 
         bits = []
-        for row in range(start_row, end_row + 1):
-            bit_idx = ws.cell(row=row, column=COL_BIT).value
-            if bit_idx is None:
-                continue
-            tag  = str(ws.cell(row=row, column=COL_TAG).value or "").strip()
-            desc = str(ws.cell(row=row, column=COL_DESC).value or "").strip()
-            # Drawing is on the first row of each module block
-            row_drawing = str(cell_val(row, COL_DRAWING) or "").strip()
-            if row_drawing in ("ENTER DRAWING NAME HERE", ""):
-                row_drawing = ""
+        if not is_other:
+            for row in range(start_row, end_row + 1):
+                bit_idx = ws.cell(row=row, column=COL_BIT).value
+                if bit_idx is None:
+                    continue
+                tag  = str(ws.cell(row=row, column=COL_TAG).value or "").strip()
+                desc = str(ws.cell(row=row, column=COL_DESC).value or "").strip()
+                # Drawing is on the first row of each module block
+                row_drawing = str(cell_val(row, COL_DRAWING) or "").strip()
+                if row_drawing in ("ENTER DRAWING NAME HERE", ""):
+                    row_drawing = ""
 
-            if not tag:
-                raise ValueError(
-                    f"Rack sheet '{ws.title}', slot {slot}, row {row}: Tag name (column E) is missing."
-                )
-            if tag in seen_tags:
-                first_slot, first_row = seen_tags[tag]
-                raise ValueError(
-                    f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
-                    f"Tag '{tag}' is already used by slot {first_slot} (row {first_row})."
-                )
-            if is_digital_or_safety and "." not in tag:
-                raise ValueError(
-                    f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
-                    f"Tag '{tag}' is invalid for module type '{mod_type}' — expected a '.' (e.g. ROUTINE_NAME.0)."
-                )
-            if is_analog and ("[" not in tag or "]" not in tag):
-                raise ValueError(
-                    f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
-                    f"Tag '{tag}' is invalid for module type '{mod_type}' — expected '[]' (e.g. ROUTINE_NAME_AIN[0])."
-                )
-            seen_tags[tag] = (slot, row)
+                if not tag:
+                    raise ValueError(
+                        f"Rack sheet '{ws.title}', slot {slot}, row {row}: Tag name (column E) is missing."
+                    )
+                if tag in seen_tags:
+                    first_slot, first_row = seen_tags[tag]
+                    raise ValueError(
+                        f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
+                        f"Tag '{tag}' is already used by slot {first_slot} (row {first_row})."
+                    )
+                if is_digital_or_safety and "." not in tag:
+                    raise ValueError(
+                        f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
+                        f"Tag '{tag}' is invalid for module type '{mod_type}' — expected a '.' (e.g. ROUTINE_NAME.0)."
+                    )
+                if is_analog and ("[" not in tag or "]" not in tag):
+                    raise ValueError(
+                        f"Rack sheet '{ws.title}', slot {slot}, row {row}: "
+                        f"Tag '{tag}' is invalid for module type '{mod_type}' — expected '[]' (e.g. ROUTINE_NAME_AIN[0])."
+                    )
+                seen_tags[tag] = (slot, row)
 
-            bits.append(Bit(index=int(bit_idx), tag=tag, description=desc, drawing=row_drawing))
+                bits.append(Bit(index=int(bit_idx), tag=tag, description=desc, drawing=row_drawing))
 
         if not mod_type:
             raise ValueError(
