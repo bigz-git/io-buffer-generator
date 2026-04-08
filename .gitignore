@@ -30,6 +30,9 @@ Thumbs.db
 # other
 git_workflow.md
 *.xlsx
+*.xls
 *.l5x
+cad_description_plan.md
+
 
 

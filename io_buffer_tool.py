@@ -17,6 +17,7 @@ import sys
 
 import excel_manager
 import l5x_generator
+import cad_generator
 from models import IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
 
 
@@ -461,6 +462,32 @@ def cmd_generate(args):
     print(f"\nDone. {len(written)} file(s) generated.")
 
 
+def cmd_generate_cad(args):
+    from datetime import datetime
+
+    path = _get_workbook_path(args.workbook)
+    output_dir = os.path.abspath(args.output) if args.output else os.path.dirname(os.path.abspath(path))
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Prompt for module suffixes that cannot be extracted from the routine name.
+    # The suffix is needed to determine the output row format for each module.
+    missing = cad_generator.collect_missing_suffixes(path)
+    suffix_overrides: dict[str, str] = {}
+    if missing:
+        print()
+        print("The following routine names have no '_' separator — module type cannot be determined.")
+        print("Enter the module type identifier for each (e.g. IA4, OW4, IB8):")
+        for routine in missing:
+            suffix_overrides[routine] = _prompt(f"  Module type for routine '{routine}'")
+
+    filename = f"CAD_Descriptions_{datetime.now().strftime('%d%m%y_%H%M')}.xlsx"
+    out_path = os.path.join(output_dir, filename)
+
+    print(f"\nGenerating CAD description file...")
+    cad_generator.generate_cad(path, out_path, suffix_overrides)
+    print(f"Written: {filename}")
+
+
 def cmd_list(args):
     path = _get_workbook_path(args.workbook)
 
@@ -517,22 +544,24 @@ def main():
         ),
     )
     sub.add_parser("fill-descriptions", help="Fill blank tag descriptions in column F with 'spare'")
-    sub.add_parser("generate",   help="Generate .l5x files from the workbook")
-    sub.add_parser("list",       help="List racks and modules in the workbook")
+    sub.add_parser("generate",     help="Generate .l5x files from the workbook")
+    sub.add_parser("generate-cad", help="Generate CAD description .xlsx from the workbook")
+    sub.add_parser("list",         help="List racks and modules in the workbook")
 
     args = parser.parse_args()
 
     commands = {
         "validate":          cmd_validate,
-        "init":       cmd_init,
-        "add-rack":    cmd_add_rack,
-        "rename-rack": cmd_rename_rack,
-        "remove-rack": cmd_remove_rack,
-        "add-module":  cmd_add_module,
+        "init":              cmd_init,
+        "add-rack":          cmd_add_rack,
+        "rename-rack":       cmd_rename_rack,
+        "remove-rack":       cmd_remove_rack,
+        "add-module":        cmd_add_module,
         "fill-tags":         cmd_fill_tags,
         "fill-descriptions": cmd_fill_descriptions,
         "generate":          cmd_generate,
-        "list":       cmd_list,
+        "generate-cad":      cmd_generate_cad,
+        "list":              cmd_list,
     }
     commands[args.command](args)
 
