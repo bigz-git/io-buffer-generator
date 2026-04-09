@@ -370,6 +370,19 @@ def read_project(path: str) -> Project:
         if rack.modules:
             racks.append(rack)
 
+    # Cross-rack routine uniqueness (intra-rack duplicates are caught in _read_rack_sheet)
+    all_routines: dict[str, str] = {}  # routine → rack name
+    for rack in racks:
+        for mod in rack.modules:
+            if mod.routine:
+                if mod.routine in all_routines:
+                    raise ValueError(
+                        f"PLC Routine Name '{mod.routine}' appears in both rack "
+                        f"'{all_routines[mod.routine]}' and rack '{rack.name}'. "
+                        f"Routine names must be unique across all racks."
+                    )
+                all_routines[mod.routine] = rack.name
+
     return Project(
         software_version=software_version,
         controller_name=controller_name,
@@ -406,6 +419,48 @@ def _generate_tag(mod_type: str, routine: str, bit_index: int) -> str:
     return f"{prefix}_{xxxx}.{bit_index}"
 
 
+def _check_all_routine_uniqueness(wb) -> None:
+    """Raise ValueError if any PLC routine name appears more than once across all rack sheets."""
+    seen: dict[str, tuple[str, int]] = {}  # routine → (rack_name, slot)
+
+    for ws in wb.worksheets:
+        if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET):
+            continue
+
+        merged_values: dict[tuple[int, int], object] = {}
+        for merge in ws.merged_cells.ranges:
+            top_left_val = ws.cell(merge.min_row, merge.min_col).value
+            for row in range(merge.min_row, merge.max_row + 1):
+                for col in range(merge.min_col, merge.max_col + 1):
+                    merged_values[(row, col)] = top_left_val
+
+        for row in range(2, ws.max_row + 1):
+            slot_val = ws.cell(row=row, column=COL_SLOT).value  # raw — None for non-top-left merged cells
+            if not isinstance(slot_val, (int, float)) or isinstance(slot_val, bool):
+                continue
+            slot = int(slot_val)
+
+            routine_raw = merged_values.get((row, COL_ROUTINE), ws.cell(row=row, column=COL_ROUTINE).value)
+            routine = str(routine_raw or "").strip()
+            if not routine or routine == "ENTER ROUTINE NAME HERE":
+                continue
+
+            if routine in seen:
+                first_rack, first_slot = seen[routine]
+                if first_rack == ws.title:
+                    raise ValueError(
+                        f"Rack sheet '{ws.title}': PLC Routine Name '{routine}' is used by "
+                        f"both slot {first_slot} and slot {slot}. Routine names must be unique."
+                    )
+                else:
+                    raise ValueError(
+                        f"PLC Routine Name '{routine}' appears in both rack '{first_rack}' "
+                        f"(slot {first_slot}) and rack '{ws.title}' (slot {slot}). "
+                        f"Routine names must be unique across all racks."
+                    )
+            seen[routine] = (ws.title, slot)
+
+
 def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
     """
     Fill blank column-E cells with auto-generated tag names.
@@ -415,6 +470,8 @@ def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
     wb = load_workbook(path)
     if rack_name not in wb.sheetnames:
         raise ValueError(f"Rack '{rack_name}' not found in workbook.")
+
+    _check_all_routine_uniqueness(wb)
 
     ws = wb[rack_name]
 
