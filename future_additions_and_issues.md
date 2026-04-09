@@ -1,13 +1,15 @@
 # Future Additions (in no particular order):
 - module presets?? - not sure about this
-- update-project command? - what would this do?
+- update-project command? - to update coversheet meta data
 - package into wheel for distribution
 - generate hardware?? - is this a bad idea?
-- readme update with instructions on usage
 - --dry-run flag on generate - print what files would be written and their tag/routine counts without writing anything
-- fill-drawings command - same pattern as fill-descriptions; prompts for a drawing filename and fills blank column G cells for a selected rack (currently left as "ENTER DRAWING NAME HERE" placeholder)
 - summary command / enhanced list - show counts of filled vs. blank tags and descriptions per rack so you can see which racks are ready to generate vs. still incomplete
-- add tool version number
+- add version number
+- generate-cad error checking
+    - if no module type is detected, prompts user for module type. there should be a check against the expected amount of channe/points (e.g 4 channel module but user types "IB8" should result in an error/warning)
+- add generate-cad command to gui
+- generate-cad for 1756 and 1794 io
 
 
 
@@ -27,7 +29,8 @@
 - remove-rack command - remove a rack sheet and its Cover Sheet entry without opening Excel - DONE
 - "Other" module type - blank buffer routine (JSR enable bit only), GSV fault detect in IO_Module_Status - DONE
 
-# in process
+
+# in process/ needs testing
 - cad files 
     - needs more testing
     - only have formats for point io so far
@@ -36,6 +39,8 @@
         1. regex scan of routine name for any known identifier — no workbook changes, but fails if identifier isn't in the name and ambiguous if two known identifiers appear
         2. dedicated "Part No." column in the rack sheet — explicit and reliable, requires workbook schema change
         3. slot-to-identifier mapping on the Cover Sheet — centralised, requires workbook schema change and must stay in sync with rack sheets
+- 1756 and 1794 safety IO modules
+
 
 # Issues:
 - IO Module Status Program - GSV instance name uses module name from sheet, but i dont always name hardware the same, for example, GBP C10 has hardware module "R4103b_SIL1" but name in routine is "R4103b_SIL1_IR2"
