@@ -58,26 +58,26 @@ FORMAT_H = "H"
 
 MODULE_FORMATS: dict[str, str] = {
 
-    # --- Format A : consecutive descriptions, no blanks ---
+    # --- Format A : [description] x 8 (8 bits, 8 rows) ---
     "IB8":  FORMAT_A,
     "OB8":  FORMAT_A,
     "OB8E": FORMAT_A,
     "IE8C": FORMAT_A,
 
-    # --- Format B : blank then description ---
+    # --- Format B : [blank][description] x 4 (4 bits, 8 rows) ---
     "OW4":  FORMAT_B,
 
-    # --- Format C : description then blank ---
+    # --- Format C : [description][blank] x 4 (4 bits, 8 rows) ---
     "IA4":  FORMAT_C,
     "OB4":  FORMAT_C,
     "OB4E": FORMAT_C,
 
-    # --- Format D : description then 3 blanks ---
+    # --- Format D : [description][blank][blank][blank] x 2 (2 bits, 8 rows) ---
     "IR2":  FORMAT_D,
     "OE2V": FORMAT_D,
     "IE2V": FORMAT_D,
 
-    # --- Format E : all descriptions first, then blanks to fill 8 rows ---
+    # --- Format E : [description][description][blank][blank][blank][blank][blank][blank] (2 bits, 8 rows) ---
 
     # --- Format F : [description][description][blank][blank] x 2 (4 bits, 8 rows) ---
     "OE4C": FORMAT_F,
@@ -176,6 +176,12 @@ def _write_module_rows(ws_out, bits: list[str], fmt: str, note: str | None, suff
         elif fmt == FORMAT_D:
             ws_out.append(data_row(desc))
             ws_out.append(blank_row())
+            ws_out.append(blank_row())
+            ws_out.append(blank_row())
+
+    # Pad FORMAT_A to a minimum of 8 rows (handles fallback modules with < 8 channels)
+    if fmt == FORMAT_A:
+        for _ in range(max(0, 8 - len(bits))):
             ws_out.append(blank_row())
             ws_out.append(blank_row())
 
