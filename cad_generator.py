@@ -183,7 +183,7 @@ def _write_module_rows(ws_out, bits: list[str], fmt: str, note: str | None, suff
     if fmt == FORMAT_A:
         for _ in range(max(0, 8 - len(bits))):
             ws_out.append(blank_row())
-            ws_out.append(blank_row())
+  
 
 
 # ---------------------------------------------------------------------------
