@@ -20,7 +20,6 @@ class Bit:
     index: int        # 0-indexed bit/channel within module
     tag: str          # buffer tag name, e.g. "CONV_01_IN.0" or "CONV_01_AIN[0]"
     description: str  # tag description
-    drawing: str      # drawing file name (stored on first bit row of each module)
 
 
 @dataclass

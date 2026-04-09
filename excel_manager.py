@@ -3,14 +3,14 @@ Manages reading and writing the project .xlsx workbook.
 
 Sheet layout:
   Sheet 1: "Cover Sheet"  — project metadata and rack summary
-  Sheet 2: reserved (CAD_Descriptions placeholder, not used yet)
+  Sheet 2: "CLI Tool Help" — usage instructions for the command-line interface
   Sheet 3+: one sheet per rack
 
 Cover Sheet cells:
   A2: Software Version
   B2: Controller Name
   C2: IO Network Card Name
-  A6:A* / B6:B*: rack name / IO bit count (auto-populated)
+  A5:A* / B5:B*: rack name / IO bit count (auto-populated)
 
 Rack sheet columns (1-indexed):
   A: Module Type (dropdown)
@@ -19,7 +19,6 @@ Rack sheet columns (1-indexed):
   D: I/O Bit
   E: I/O Buffer Tag Name
   F: I/O Buffer Tag Description
-  G: Drawing File Name
 """
 
 import re
@@ -32,7 +31,8 @@ from openpyxl.utils import get_column_letter
 from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
 
 COVER_SHEET = "Cover Sheet"
-CAD_SHEET = "CAD_Descriptions"
+CAD_SHEET   = "CAD_Descriptions"
+HELP_SHEET  = "CLI Tool Help"
 
 COL_MOD_TYPE = 1   # A
 COL_SLOT     = 2   # B
@@ -40,7 +40,6 @@ COL_ROUTINE  = 3   # C
 COL_BIT      = 4   # D
 COL_TAG      = 5   # E
 COL_DESC     = 6   # F
-COL_DRAWING  = 7   # G
 
 THIN = Side(style="thin")
 BORDER_BOTTOM = Border(bottom=THIN)
@@ -61,8 +60,9 @@ def create_workbook(path: str, software_version: str, controller_name: str, io_n
     _setup_cover_sheet(ws_cover, software_version, controller_name, io_network_card,
                        project_number, project_description)
 
-    # Sheet 2 — CAD Descriptions placeholder (keeps sheet indices consistent with VBA)
-    wb.create_sheet(CAD_SHEET)
+    # Sheet 2 — CLI Tool Help
+    ws_help = wb.create_sheet(HELP_SHEET)
+    _setup_cli_help_sheet(ws_help)
 
     wb.save(path)
 
@@ -81,21 +81,11 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_netwo
     ws["D2"] = project_number
     ws["E2"] = project_description
 
-    note = (
-        "Note: For auto tag fill (fill-tags command), routine names in rack sheets must start "
-        "with R#### (e.g. R4103, where 4103 is the drawing sheet number where the I/O module is shown)."
-    )
-    ws["A4"] = note
-    ws["A4"].font = Font(italic=True)
-    ws["A4"].alignment = Alignment(wrap_text=True)
-    ws.merge_cells("A4:E4")
-    ws.row_dimensions[4].height = 45
+    ws["A4"] = "Rack Name"
+    ws["B4"] = "IO Bit Count"
+    ws["C4"] = "IO Family"
 
-    ws["A5"] = "Rack Name"
-    ws["B5"] = "IO Bit Count"
-    ws["C5"] = "IO Family"
-
-    for cell in [ws["A5"], ws["B5"], ws["C5"]]:
+    for cell in [ws["A4"], ws["B4"], ws["C4"]]:
         cell.font = Font(bold=True)
 
     ws.column_dimensions["A"].width = 30
@@ -103,6 +93,45 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_netwo
     ws.column_dimensions["C"].width = 30
     ws.column_dimensions["D"].width = 20
     ws.column_dimensions["E"].width = 40
+
+
+def _setup_cli_help_sheet(ws) -> None:
+    CLI_COMMANDS = [
+        ("init",               "Create a new project workbook."),
+        ("add-rack",           "Add a rack to the workbook."),
+        ("rename-rack",        "Rename an existing rack."),
+        ("remove-rack",        "Remove a rack sheet and its Cover Sheet entry."),
+        ("add-module",         "Add modules to an existing rack."),
+        ("fill-tags",          (
+            "Auto-fill blank tag names in column E from the module type and routine name. "
+            "Routine names must start with R#### (e.g. R4103) for the drawing number to appear "
+            "in the tag. Existing values are never overwritten; rows without a module type are skipped."
+        )),
+        ("fill-descriptions",  "Fill blank tag descriptions in column F with 'spare'."),
+        ("generate",           "Generate .l5x files from the workbook."),
+        ("generate-cad",       "Generate a CAD description .xlsx from the workbook."),
+        ("validate",           "Check the workbook for errors and warnings without generating files."),
+        ("list",               "List all racks and modules in the workbook."),
+    ]
+
+    ws["A1"] = "Usage:  python io_buffer_tool.py <command>  [--workbook <path>]  [--output <dir>]"
+    ws["A1"].font = Font(bold=True)
+    ws.merge_cells("A1:B1")
+    ws.row_dimensions[1].height = 18
+
+    ws["A2"] = "Command"
+    ws["B2"] = "Description"
+    for cell in [ws["A2"], ws["B2"]]:
+        cell.font = Font(bold=True)
+        cell.border = HEADER_BORDER
+
+    for i, (cmd, desc) in enumerate(CLI_COMMANDS, start=3):
+        ws.cell(row=i, column=1, value=cmd)
+        ws.cell(row=i, column=2, value=desc).alignment = Alignment(wrap_text=True)
+
+    ws.column_dimensions["A"].width = 22
+    ws.column_dimensions["B"].width = 80
+    ws.row_dimensions[8].height = 42   # fill-tags row needs extra height for wrapped text
 
 
 # ---------------------------------------------------------------------------
@@ -129,8 +158,8 @@ def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMIL
 def _write_rack_sheet(ws, modules: list) -> None:
     """modules: list of int (bit counts per slot, in slot order)."""
     headers = ["Module Type", "Module Slot Number", "PLC Routine Name",
-               "I/O Bit", "I/O Buffer Tag Name", "I/O Buffer Tag Description", "Drawing File Name"]
-    col_widths = [22, 27, 25, 11, 22, 28.5, 35]
+               "I/O Bit", "I/O Buffer Tag Name", "I/O Buffer Tag Description"]
+    col_widths = [22, 27, 25, 11, 22, 28.5]
 
     for col, (header, width) in enumerate(zip(headers, col_widths), start=1):
         cell = ws.cell(row=1, column=col, value=header)
@@ -162,22 +191,19 @@ def _write_rack_sheet(ws, modules: list) -> None:
         # Routine name placeholder (merged)
         ws.cell(row=start_row, column=COL_ROUTINE, value="ENTER ROUTINE NAME HERE")
 
-        # Drawing name placeholder (merged)
-        ws.cell(row=start_row, column=COL_DRAWING, value="ENTER DRAWING NAME HERE")
-
         # Apply dropdown validation to module type cell (top of merge)
         dv.add(ws.cell(row=start_row, column=COL_MOD_TYPE))
 
-        # Merge columns A, B, C, G across all bit rows for this module
+        # Merge columns A, B, C across all bit rows for this module
         if num_bits > 1:
-            for col in [COL_MOD_TYPE, COL_SLOT, COL_ROUTINE, COL_DRAWING]:
+            for col in [COL_MOD_TYPE, COL_SLOT, COL_ROUTINE]:
                 ws.merge_cells(
                     start_row=start_row, start_column=col,
                     end_row=end_row, end_column=col
                 )
 
         # Bottom border on last row of this module
-        for col in range(1, 8):
+        for col in range(1, 7):
             cell = ws.cell(row=end_row, column=col)
             cell.border = BORDER_BOTTOM
 
@@ -187,7 +213,7 @@ def _write_rack_sheet(ws, modules: list) -> None:
             ws.cell(row=row, column=COL_BIT).alignment = Alignment(horizontal="center", vertical="center")
 
         # Center/wrap merged cells
-        for col in [COL_MOD_TYPE, COL_SLOT, COL_ROUTINE, COL_DRAWING]:
+        for col in [COL_MOD_TYPE, COL_SLOT, COL_ROUTINE]:
             ws.cell(row=start_row, column=col).alignment = Alignment(
                 horizontal="center", vertical="center", wrap_text=True
             )
@@ -200,8 +226,8 @@ def _write_rack_sheet(ws, modules: list) -> None:
 
 
 def _append_cover_summary(ws_cover, rack_name: str, io_family: str = IO_FAMILY_POINT) -> None:
-    # Find next empty row starting at row 6
-    row = 6
+    # Find next empty row starting at row 5
+    row = 5
     while ws_cover.cell(row=row, column=COL_MOD_TYPE).value is not None:
         row += 1
     ws_cover.cell(row=row, column=COL_MOD_TYPE, value=rack_name)
@@ -261,24 +287,23 @@ def add_modules_to_rack(path: str, rack_name: str, new_modules: list) -> None:
 
         ws.cell(row=start_row, column=COL_SLOT, value=slot)
         ws.cell(row=start_row, column=COL_ROUTINE, value="ENTER ROUTINE NAME HERE")
-        ws.cell(row=start_row, column=COL_DRAWING, value="ENTER DRAWING NAME HERE")
         dv.add(ws.cell(row=start_row, column=COL_MOD_TYPE))
 
         if num_bits > 1:
-            for col in [COL_MOD_TYPE, COL_SLOT, COL_ROUTINE, COL_DRAWING]:
+            for col in [COL_MOD_TYPE, COL_SLOT, COL_ROUTINE]:
                 ws.merge_cells(
                     start_row=start_row, start_column=col,
                     end_row=end_row_mod, end_column=col
                 )
 
-        for col in range(1, 8):
+        for col in range(1, 7):
             ws.cell(row=end_row_mod, column=col).border = BORDER_BOTTOM
 
         for row in range(start_row, end_row_mod + 1):
             ws.cell(row=row, column=COL_SLOT).alignment = Alignment(horizontal="center", vertical="center")
             ws.cell(row=row, column=COL_BIT).alignment = Alignment(horizontal="center", vertical="center")
 
-        for col in [COL_MOD_TYPE, COL_SLOT, COL_ROUTINE, COL_DRAWING]:
+        for col in [COL_MOD_TYPE, COL_SLOT, COL_ROUTINE]:
             ws.cell(row=start_row, column=col).alignment = Alignment(
                 horizontal="center", vertical="center", wrap_text=True
             )
@@ -309,10 +334,10 @@ def read_project(path: str) -> Project:
             "or IO Network Card Name (C2)."
         )
 
-    # Build io_family map from cover sheet rack summary rows (A6+, C6+)
+    # Build io_family map from cover sheet rack summary rows (A5+, C5+)
     valid_families = {IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX}
     family_map = {}
-    for row in range(6, ws_cover.max_row + 1):
+    for row in range(5, ws_cover.max_row + 1):
         rname = ws_cover.cell(row=row, column=1).value  # column A — rack name
         fam   = ws_cover.cell(row=row, column=3).value  # column C — IO family
         if rname and str(rname).strip():
@@ -331,8 +356,9 @@ def read_project(path: str) -> Project:
             family_map[rname_str] = fam_str
 
     racks = []
-    # Rack sheets start at index 2 (0-based), skipping Cover Sheet and CAD_Descriptions
-    for ws in wb.worksheets[2:]:
+    for ws in wb.worksheets:
+        if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET):
+            continue
         rack = _read_rack_sheet(ws)
         if ws.title not in family_map:
             raise ValueError(
@@ -456,7 +482,7 @@ def rename_rack(path: str, old_name: str, new_name: str) -> None:
     # Update Cover Sheet: find the row where column A == old_name
     ws_cover = wb[COVER_SHEET]
     found = False
-    for row in range(6, ws_cover.max_row + 1):
+    for row in range(5, ws_cover.max_row + 1):
         cell_name = ws_cover.cell(row=row, column=COL_MOD_TYPE)
         if cell_name.value == old_name:
             cell_name.value = new_name
@@ -490,7 +516,7 @@ def remove_rack(path: str, rack_name: str) -> None:
     # Remove the Cover Sheet summary row for this rack
     ws_cover = wb[COVER_SHEET]
     found = False
-    for row in range(6, ws_cover.max_row + 1):
+    for row in range(5, ws_cover.max_row + 1):
         cell_name = ws_cover.cell(row=row, column=COL_MOD_TYPE)
         if cell_name.value == rack_name:
             ws_cover.delete_rows(row)
@@ -583,7 +609,6 @@ def _read_rack_sheet(ws) -> Rack:
 
         mod_type = str(cell_val(start_row, COL_MOD_TYPE) or "").strip()
         routine  = str(cell_val(start_row, COL_ROUTINE) or "").strip()
-        drawing  = str(cell_val(start_row, COL_DRAWING) or "").strip()
 
         if routine in ("ENTER ROUTINE NAME HERE", ""):
             routine = ""
@@ -612,10 +637,6 @@ def _read_rack_sheet(ws) -> Rack:
                     continue
                 tag  = str(ws.cell(row=row, column=COL_TAG).value or "").strip()
                 desc = str(ws.cell(row=row, column=COL_DESC).value or "").strip()
-                # Drawing is on the first row of each module block
-                row_drawing = str(cell_val(row, COL_DRAWING) or "").strip()
-                if row_drawing in ("ENTER DRAWING NAME HERE", ""):
-                    row_drawing = ""
 
                 if not tag:
                     raise ValueError(
@@ -639,7 +660,7 @@ def _read_rack_sheet(ws) -> Rack:
                     )
                 seen_tags[tag] = (slot, row)
 
-                bits.append(Bit(index=int(bit_idx), tag=tag, description=desc, drawing=row_drawing))
+                bits.append(Bit(index=int(bit_idx), tag=tag, description=desc))
 
         if not mod_type:
             raise ValueError(

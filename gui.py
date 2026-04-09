@@ -17,7 +17,8 @@ import l5x_generator
 from models import IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_POINT
 
 COVER_SHEET = excel_manager.COVER_SHEET
-CAD_SHEET = excel_manager.CAD_SHEET
+CAD_SHEET   = excel_manager.CAD_SHEET
+HELP_SHEET  = excel_manager.HELP_SHEET
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +125,7 @@ class App(tk.Tk):
 
     def _get_rack_names(self, path: str) -> list[str]:
         wb = load_workbook(path, read_only=True)
-        names = [s for s in wb.sheetnames if s not in (COVER_SHEET, CAD_SHEET)]
+        names = [s for s in wb.sheetnames if s not in (COVER_SHEET, CAD_SHEET, HELP_SHEET)]
         wb.close()
         return names
 

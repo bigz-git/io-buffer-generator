@@ -157,7 +157,7 @@ def cmd_rename_rack(args):
 
     from openpyxl import load_workbook as lw
     wb = lw(path, read_only=True)
-    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET)]
+    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
     if not rack_names:
@@ -195,7 +195,7 @@ def cmd_remove_rack(args):
 
     from openpyxl import load_workbook as lw
     wb = lw(path, read_only=True)
-    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET)]
+    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
     if not rack_names:
@@ -237,7 +237,7 @@ def cmd_add_module(args):
     # Load workbook to show available racks
     from openpyxl import load_workbook as lw
     wb = lw(path, read_only=True)
-    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET)]
+    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
     if not rack_names:
@@ -280,7 +280,7 @@ def cmd_fill_tags(args):
 
     from openpyxl import load_workbook as lw
     wb = lw(path, read_only=True)
-    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET)]
+    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
     if not rack_names:
@@ -372,7 +372,7 @@ def cmd_fill_descriptions(args):
 
     from openpyxl import load_workbook as lw
     wb = lw(path, read_only=True)
-    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET)]
+    rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
     if not rack_names:

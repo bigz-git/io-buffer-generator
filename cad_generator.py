@@ -16,7 +16,7 @@ Word-wrap rules:
 from openpyxl import load_workbook, Workbook
 
 from excel_manager import (
-    COVER_SHEET, CAD_SHEET,
+    COVER_SHEET, CAD_SHEET, HELP_SHEET,
     COL_MOD_TYPE, COL_SLOT, COL_ROUTINE, COL_BIT, COL_DESC,
 )
 from models import OTHER_TYPES
@@ -290,7 +290,7 @@ def generate_cad(
     wb_out = Workbook()
     wb_out.remove(wb_out.active)
 
-    rack_sheets = [ws for ws in wb_in.worksheets if ws.title not in (COVER_SHEET, CAD_SHEET)]
+    rack_sheets = [ws for ws in wb_in.worksheets if ws.title not in (COVER_SHEET, CAD_SHEET, HELP_SHEET)]
 
     for ws_in in rack_sheets:
         ws_out = wb_out.create_sheet(ws_in.title)
