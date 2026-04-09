@@ -370,8 +370,9 @@ def read_project(path: str) -> Project:
         if rack.modules:
             racks.append(rack)
 
-    # Cross-rack routine uniqueness (intra-rack duplicates are caught in _read_rack_sheet)
+    # Cross-rack uniqueness checks (intra-rack duplicates are caught in _read_rack_sheet)
     all_routines: dict[str, str] = {}  # routine → rack name
+    all_tags: dict[str, tuple[str, int]] = {}  # tag → (rack_name, slot)
     for rack in racks:
         for mod in rack.modules:
             if mod.routine:
@@ -382,6 +383,16 @@ def read_project(path: str) -> Project:
                         f"Routine names must be unique across all racks."
                     )
                 all_routines[mod.routine] = rack.name
+            for bit in mod.bits:
+                if bit.tag:
+                    if bit.tag in all_tags:
+                        first_rack, first_slot = all_tags[bit.tag]
+                        raise ValueError(
+                            f"Tag '{bit.tag}' appears in both rack '{first_rack}' "
+                            f"(slot {first_slot}) and rack '{rack.name}' (slot {mod.slot}). "
+                            f"Tag names must be unique across all racks."
+                        )
+                    all_tags[bit.tag] = (rack.name, mod.slot)
 
     return Project(
         software_version=software_version,
@@ -461,6 +472,50 @@ def _check_all_routine_uniqueness(wb) -> None:
             seen[routine] = (ws.title, slot)
 
 
+def _check_all_tag_uniqueness(wb) -> None:
+    """Raise ValueError if any tag name appears more than once across all rack sheets."""
+    seen: dict[str, tuple[str, object, int]] = {}  # tag → (rack_name, slot, row)
+
+    for ws in wb.worksheets:
+        if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET):
+            continue
+
+        merged_values: dict[tuple[int, int], object] = {}
+        for merge in ws.merged_cells.ranges:
+            top_left_val = ws.cell(merge.min_row, merge.min_col).value
+            for row in range(merge.min_row, merge.max_row + 1):
+                for col in range(merge.min_col, merge.max_col + 1):
+                    merged_values[(row, col)] = top_left_val
+
+        for row in range(2, ws.max_row + 1):
+            bit_val = ws.cell(row=row, column=COL_BIT).value
+            if not isinstance(bit_val, (int, float)) or isinstance(bit_val, bool):
+                continue
+
+            tag = str(ws.cell(row=row, column=COL_TAG).value or "").strip()
+            if not tag:
+                continue
+
+            slot_raw = merged_values.get((row, COL_SLOT), ws.cell(row=row, column=COL_SLOT).value)
+            slot = int(slot_raw) if isinstance(slot_raw, (int, float)) and not isinstance(slot_raw, bool) else "?"
+
+            if tag in seen:
+                first_rack, first_slot, first_row = seen[tag]
+                if first_rack == ws.title:
+                    raise ValueError(
+                        f"Rack sheet '{ws.title}': Tag '{tag}' appears at both "
+                        f"slot {first_slot} (row {first_row}) and slot {slot} (row {row}). "
+                        f"Tag names must be unique."
+                    )
+                else:
+                    raise ValueError(
+                        f"Tag '{tag}' appears in both rack '{first_rack}' "
+                        f"(slot {first_slot}, row {first_row}) and rack '{ws.title}' "
+                        f"(slot {slot}, row {row}). Tag names must be unique across all racks."
+                    )
+            seen[tag] = (ws.title, slot, row)
+
+
 def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
     """
     Fill blank column-E cells with auto-generated tag names.
@@ -517,6 +572,7 @@ def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
         ws.cell(row=row, column=COL_TAG).value = tag
         filled += 1
 
+    _check_all_tag_uniqueness(wb)
     wb.save(path)
     return filled, skipped_slots
 
