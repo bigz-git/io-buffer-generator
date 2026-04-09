@@ -11,6 +11,15 @@ Available as both a CLI (`io_buffer_tool.py`) and a GUI (`gui.py`).
 > **TODO:** Installation instructions will be updated once the tool is packaged as a wheel.
 >
 > For now, install dependencies manually:
+> create virtual environment:
+> ```
+> python -m venv venv
+> ```
+> activate it:
+> ```
+> venv\Scripts\Activate
+> ```
+> install dependencies:
 > ```
 > pip install -r requirements.txt
 > ```
