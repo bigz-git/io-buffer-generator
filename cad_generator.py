@@ -31,11 +31,17 @@ NOTE_UNKNOWN = "FORMAT NEEDS CHECKING - module type not in MODULE_FORMATS"
 # Module format map
 # Edit this section to add new module type identifiers as you encounter them.
 #
-# FORMAT_A : consecutive [description] rows, no blanks           (e.g. IB8, OB8)
-# FORMAT_B : [blank][description] repeated per channel            (e.g. OW4)
-# FORMAT_C : [description][blank] repeated per channel            (e.g. IA4)
-# FORMAT_D : [description][blank][blank][blank] per channel       (e.g. IR2)
-# FORMAT_E : all descriptions first, then blanks to fill 8 rows  (e.g. IE2V)
+# FORMAT_A : [description] x 8                                                      (e.g. IB8, OB8)
+# FORMAT_B : [blank][description] x 4                                               (e.g. OW4)
+# FORMAT_C : [description][blank] x 4                                               (e.g. IA4)
+# FORMAT_D : [description][blank][blank][blank] x 2                                 (e.g. IR2)
+# FORMAT_E : [description][description][blank][blank][blank][blank][blank][blank]   (e.g. NA)
+# FORMAT_F : [description][description][blank][blank] x 2                           (e.g. OE4C)
+# FORMAT_G : [description][description][blank][blank] x 4                           (e.g. IB8S)
+# FORMAT_H : [description][blank][description][blank] x 4                           (e.g. OB8S)
+
+# modules that need format assignment:
+# IB4: FORMAT_E??
 # ---------------------------------------------------------------------------
 
 FORMAT_A = "A"
@@ -43,12 +49,11 @@ FORMAT_B = "B"
 FORMAT_C = "C"
 FORMAT_D = "D"
 FORMAT_E = "E"
+FORMAT_F = "F"
+FORMAT_G = "G"
+FORMAT_H = "H"
 
-# modules that need format assignment:
-# - IB4: FORMAT_E??
-# - IB8S 16 points (desc desc blank blank desc desc blank blank) X2
-# - OB8S 16 points (desc blank desc blank desc blank desc blank) X2
-# - OE4C: desc desc blank blank desc desc blank blank
+
 
 
 MODULE_FORMATS: dict[str, str] = {
@@ -65,14 +70,23 @@ MODULE_FORMATS: dict[str, str] = {
     # --- Format C : description then blank ---
     "IA4":  FORMAT_C,
     "OB4":  FORMAT_C,
-    "OB4E":  FORMAT_C,
+    "OB4E": FORMAT_C,
 
     # --- Format D : description then 3 blanks ---
     "IR2":  FORMAT_D,
-    "OE2V":  FORMAT_D,
+    "OE2V": FORMAT_D,
+    "IE2V": FORMAT_D,
 
     # --- Format E : all descriptions first, then blanks to fill 8 rows ---
-    "IE2V": FORMAT_E,
+
+    # --- Format F : [description][description][blank][blank] x 2 (4 bits, 8 rows) ---
+    "OE4C": FORMAT_F,
+
+    # --- Format G : [description][description][blank][blank] x 4 (8 bits, 16 rows) ---
+    "IB8S": FORMAT_G,
+
+    # --- Format H : [description][blank][description][blank] x 4 (8 bits, 16 rows) ---
+    "OB8S": FORMAT_H,
 
 }
 
@@ -141,13 +155,22 @@ def _write_module_rows(ws_out, bits: list[str], fmt: str, note: str | None, suff
             ws_out.append(blank_row())
         return
 
+    if fmt in (FORMAT_F, FORMAT_G):
+        # Pairs of descriptions followed by two blanks
+        for i in range(0, len(bits), 2):
+            ws_out.append(data_row(bits[i]))
+            ws_out.append(data_row(bits[i + 1]) if i + 1 < len(bits) else blank_row())
+            ws_out.append(blank_row())
+            ws_out.append(blank_row())
+        return
+
     for desc in bits:
         if fmt == FORMAT_A:
             ws_out.append(data_row(desc))
         elif fmt == FORMAT_B:
             ws_out.append(blank_row())
             ws_out.append(data_row(desc))
-        elif fmt == FORMAT_C:
+        elif fmt in (FORMAT_C, FORMAT_H):
             ws_out.append(data_row(desc))
             ws_out.append(blank_row())
         elif fmt == FORMAT_D:
