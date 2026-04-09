@@ -1,5 +1,4 @@
 # Future Additions (in no particular order):
-- cad files
 - module presets?? - not sure about this
 - update-project command? - what would this do?
 - package into wheel for distribution
@@ -8,6 +7,8 @@
 - --dry-run flag on generate - print what files would be written and their tag/routine counts without writing anything
 - fill-drawings command - same pattern as fill-descriptions; prompts for a drawing filename and fills blank column G cells for a selected rack (currently left as "ENTER DRAWING NAME HERE" placeholder)
 - summary command / enhanced list - show counts of filled vs. blank tags and descriptions per rack so you can see which racks are ready to generate vs. still incomplete
+- add tool version number
+
 
 
 # Completed:
@@ -26,6 +27,15 @@
 - remove-rack command - remove a rack sheet and its Cover Sheet entry without opening Excel - DONE
 - "Other" module type - blank buffer routine (JSR enable bit only), GSV fault detect in IO_Module_Status - DONE
 
+# in process
+- cad files 
+    - needs more testing
+    - only have formats for point io so far
+    - also not a complete list of PIO formats
+    - module type identifier currently extracted by splitting routine name on `_` and taking the last segment — fragile if naming conventions vary. Options to revisit:
+        1. regex scan of routine name for any known identifier — no workbook changes, but fails if identifier isn't in the name and ambiguous if two known identifiers appear
+        2. dedicated "Part No." column in the rack sheet — explicit and reliable, requires workbook schema change
+        3. slot-to-identifier mapping on the Cover Sheet — centralised, requires workbook schema change and must stay in sync with rack sheets
 
 # Issues:
 - IO Module Status Program - GSV instance name uses module name from sheet, but i dont always name hardware the same, for example, GBP C10 has hardware module "R4103b_SIL1" but name in routine is "R4103b_SIL1_IR2"
