@@ -121,37 +121,40 @@ def wrap_description(text: str) -> tuple[str, str, str]:
 # Row writing
 # ---------------------------------------------------------------------------
 
-def _write_module_rows(ws_out, bits: list[str], fmt: str, note: str | None) -> None:
-    """Write 8 output rows for one module according to its format."""
+def _write_module_rows(ws_out, bits: list[str], fmt: str, note: str | None, suffix: str = "") -> None:
+    """Write 8 data rows for a module block, with suffix in column A of each row."""
 
     def data_row(desc):
-        row = list(wrap_description(desc))
+        row = [suffix] + list(wrap_description(desc))
         if note:
             row.append(note)
         return row
+
+    def blank_row():
+        return [suffix, None, None, None]
 
     if fmt == FORMAT_E:
         # All descriptions first, then blanks to fill 8 rows
         for desc in bits:
             ws_out.append(data_row(desc))
         for _ in range(8 - len(bits)):
-            ws_out.append([])
+            ws_out.append(blank_row())
         return
 
     for desc in bits:
         if fmt == FORMAT_A:
             ws_out.append(data_row(desc))
         elif fmt == FORMAT_B:
-            ws_out.append([])
+            ws_out.append(blank_row())
             ws_out.append(data_row(desc))
         elif fmt == FORMAT_C:
             ws_out.append(data_row(desc))
-            ws_out.append([])
+            ws_out.append(blank_row())
         elif fmt == FORMAT_D:
             ws_out.append(data_row(desc))
-            ws_out.append([])
-            ws_out.append([])
-            ws_out.append([])
+            ws_out.append(blank_row())
+            ws_out.append(blank_row())
+            ws_out.append(blank_row())
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +265,7 @@ def generate_cad(
 
     for ws_in in rack_sheets:
         ws_out = wb_out.create_sheet(ws_in.title)
-        ws_out.append(['DESCA', 'DESCB', 'DESCC'])
+        ws_out.append(['MODULE_TYPE', 'DESCA', 'DESCB', 'DESCC'])
 
         for mod in _read_rack_for_cad(ws_in):
             routine  = mod['routine']
@@ -280,7 +283,7 @@ def generate_cad(
             else:
                 note = None
 
-            _write_module_rows(ws_out, mod['bits'], fmt, note)
+            _write_module_rows(ws_out, mod['bits'], fmt, note, suffix)
 
     wb_out.save(output_path)
     return output_path
