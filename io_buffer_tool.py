@@ -18,6 +18,7 @@ import sys
 import excel_manager
 import l5x_generator
 import cad_generator
+from ascii_logo import image_to_ascii
 from models import IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
 
 
@@ -76,6 +77,7 @@ def _get_workbook_path(args_path: str | None) -> str:
 # ---------------------------------------------------------------------------
 
 def cmd_init(args):
+    image_to_ascii('Quad Plus Brand Logo.png', width=30)
     os.system("")  # enable ANSI escape codes on Windows
     _BOLD  = "\033[1m"
     _CYAN  = "\033[94m"
