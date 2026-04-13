@@ -16,7 +16,7 @@ Rack sheet columns (1-indexed):
   A: Module Type (dropdown)
   B: Module Slot Number
   C: PLC Routine Name
-  D: I/O Bit
+  D: I/O Point
   E: I/O Buffer Tag Name
   F: I/O Buffer Tag Description
 """
@@ -82,15 +82,15 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_netwo
     ws["E2"] = project_description
 
     ws["A4"] = "Rack Name"
-    ws["B4"] = "IO Bit Count"
+    ws["B4"] = "IO Point Count"
     ws["C4"] = "IO Family"
 
     for cell in [ws["A4"], ws["B4"], ws["C4"]]:
         cell.font = Font(bold=True)
 
-    ws.column_dimensions["A"].width = 30
-    ws.column_dimensions["B"].width = 15
-    ws.column_dimensions["C"].width = 30
+    ws.column_dimensions["A"].width = 25
+    ws.column_dimensions["B"].width = 16
+    ws.column_dimensions["C"].width = 25
     ws.column_dimensions["D"].width = 20
     ws.column_dimensions["E"].width = 40
 
@@ -129,7 +129,7 @@ def _setup_cli_help_sheet(ws) -> None:
         ws.cell(row=i, column=1, value=cmd)
         ws.cell(row=i, column=2, value=desc).alignment = Alignment(wrap_text=True)
 
-    ws.column_dimensions["A"].width = 22
+    ws.column_dimensions["A"].width = 20
     ws.column_dimensions["B"].width = 80
     ws.row_dimensions[8].height = 42   # fill-tags row needs extra height for wrapped text
 
@@ -156,10 +156,10 @@ def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMIL
 
 
 def _write_rack_sheet(ws, modules: list) -> None:
-    """modules: list of int (bit counts per slot, in slot order)."""
+    """modules: list of int (point counts per slot, in slot order)."""
     headers = ["Module Type", "Module Slot Number", "PLC Routine Name",
-               "I/O Bit", "I/O Buffer Tag Name", "I/O Buffer Tag Description"]
-    col_widths = [22, 27, 25, 11, 22, 28.5]
+               "I/O Point", "I/O Buffer Tag Name", "I/O Buffer Tag Description"]
+    col_widths = [25, 25, 25, 10, 20, 40]
 
     for col, (header, width) in enumerate(zip(headers, col_widths), start=1):
         cell = ws.cell(row=1, column=col, value=header)
@@ -242,7 +242,7 @@ def _append_cover_summary(ws_cover, rack_name: str, io_family: str = IO_FAMILY_P
 
 def add_modules_to_rack(path: str, rack_name: str, new_modules: list) -> None:
     """
-    new_modules: list of int (bit counts), appended after existing modules.
+    new_modules: list of int (point/channel counts), appended after existing modules.
     Removes the 'End' sentinel, appends new module rows, re-adds sentinel.
     """
     wb = load_workbook(path)
