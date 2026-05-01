@@ -28,7 +28,7 @@ from openpyxl.styles import Alignment, Border, Side, Font
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import get_column_letter
 
-from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
+from models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000
 
 COVER_SHEET = "Cover Sheet"
 CAD_SHEET   = "CAD_Descriptions"
@@ -335,7 +335,7 @@ def read_project(path: str) -> Project:
         )
 
     # Build io_family map from cover sheet rack summary rows (A5+, C5+)
-    valid_families = {IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX}
+    valid_families = {IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000}
     family_map = {}
     for row in range(5, ws_cover.max_row + 1):
         rname = ws_cover.cell(row=row, column=1).value  # column A — rack name

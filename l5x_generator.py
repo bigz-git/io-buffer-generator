@@ -9,7 +9,7 @@ Produces up to two files:
 import os
 from datetime import datetime
 
-from models import Project, Rack, Module, Bit, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_FLEX, IO_FAMILY_CLX
+from models import Project, Rack, Module, Bit, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000
 
 
 # ---------------------------------------------------------------------------
@@ -316,17 +316,21 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
     for bit in mod.bits:
         tag = bit.tag
         b = bit.index
-        # Flex IO (1794): first module is slot 0; Point IO (1734) and CLX (1756): first module is slot 1
+        # Flex IO (1794): first module is slot 0; all others: first module is slot 1
         slot = mod.slot - 1 if rack.io_family == IO_FAMILY_FLEX else mod.slot
 
         if mod.type == "Input":
-            if (rack.io_family == IO_FAMILY_CLX
+            if rack.io_family == IO_FAMILY_FLEX5000:
+                ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}.Data)OTE({tag})"
+            elif (rack.io_family == IO_FAMILY_CLX
                     or (rack.io_family == IO_FAMILY_FLEX and len(mod.bits) == 32)):
                 ladder = f"XIC({rack.name}:{slot}:I.Data.{b})OTE({tag})"
             else:
                 ladder = f"XIC({rack.name}:{slot}:I.{b})OTE({tag})"
         elif mod.type == "Output":
-            if (rack.io_family == IO_FAMILY_CLX
+            if rack.io_family == IO_FAMILY_FLEX5000:
+                ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Pt{b:02d}.Data)"
+            elif (rack.io_family == IO_FAMILY_CLX
                     or (rack.io_family == IO_FAMILY_FLEX and len(mod.bits) == 32)):
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Data.{b})"
             else:
@@ -409,11 +413,11 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
             rung_num += 1
             continue
 
-        # Flex IO (1794): first module is slot 0; Point IO (1734) and CLX (1756): first module is slot 1
+        # Flex IO (1794): first module is slot 0; all others: first module is slot 1
         addr_slot = mod.slot - 1 if rack.io_family == IO_FAMILY_FLEX else mod.slot
         mod_comment = f"Module Fault Detect Logic\nPoint Bus Module {addr_slot}"
 
-        if rack.io_family in (IO_FAMILY_FLEX, IO_FAMILY_CLX):
+        if rack.io_family in (IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000):
             if mod.type in DIGITAL_TYPES:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits.{addr_slot}) ,\n"

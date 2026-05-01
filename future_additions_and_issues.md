@@ -10,7 +10,9 @@
     - if no module type is detected, prompts user for module type. there should be a check against the expected amount of channe/points (e.g 4 channel module but user types "IB8" should result in an error/warning)
 - add generate-cad command to gui
 - generate-cad for 1756 and 1794 io
-
+- 5094 - flex 5000 io (option not available with L7 processor)
+- error check for open workbook - otherwise, the write will fail and no message is displayed in gui area
+- 5069 - Compact 5000 io (option not available with L7 processor)
 
 
 # Completed:

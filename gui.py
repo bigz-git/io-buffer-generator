@@ -14,7 +14,7 @@ from PIL import Image, ImageTk
 
 import excel_manager
 import l5x_generator
-from models import IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_POINT
+from models import IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_FLEX5000, IO_FAMILY_POINT
 
 COVER_SHEET = excel_manager.COVER_SHEET
 CAD_SHEET   = excel_manager.CAD_SHEET
@@ -564,9 +564,10 @@ class AddRackDialog(_RackModuleBase):
         fam_frame = ttk.Frame(top)
         fam_frame.grid(row=1, column=1, sticky="w", padx=8)
         for val, label in [
-            (IO_FAMILY_POINT, f"{IO_FAMILY_POINT} — Point IO"),
-            (IO_FAMILY_FLEX,  f"{IO_FAMILY_FLEX}  — Flex IO"),
-            (IO_FAMILY_CLX,   f"{IO_FAMILY_CLX}   — ControlLogix IO"),
+            (IO_FAMILY_POINT,    f"{IO_FAMILY_POINT} — Point IO"),
+            (IO_FAMILY_FLEX,     f"{IO_FAMILY_FLEX}  — Flex IO"),
+            (IO_FAMILY_CLX,      f"{IO_FAMILY_CLX}   — ControlLogix IO"),
+            (IO_FAMILY_FLEX5000, f"{IO_FAMILY_FLEX5000} — Flex 5000 IO"),
         ]:
             ttk.Radiobutton(fam_frame, text=label, variable=self._family_var,
                             value=val).pack(anchor="w")

@@ -165,5 +165,3 @@ These files are importable into Rockwell Studio 5000.
 - Module output format is determined by the suffix after the last `_` in the routine name (e.g. `R4103_IB8` → suffix `IB8`). If a routine name has no `_`, the tool will prompt for the module type identifier at runtime.
 - Not all Point IO module types are mapped yet. Unknown module types fall back to Format A (consecutive descriptions) and a note is written in column D of the output row.
 
-
-
