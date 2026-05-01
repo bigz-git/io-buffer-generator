@@ -417,10 +417,23 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
         addr_slot = mod.slot - 1 if rack.io_family == IO_FAMILY_FLEX else mod.slot
         mod_comment = f"Module Fault Detect Logic\nPoint Bus Module {addr_slot}"
 
-        if rack.io_family in (IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000):
+        if rack.io_family in (IO_FAMILY_FLEX, IO_FAMILY_CLX):
             if mod.type in DIGITAL_TYPES:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits.{addr_slot}) ,\n"
+                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}_S_Fault)"
+                )
+            else:
+                ladder = (
+                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) NEQ({mod.routine}._S_FaultCode,0) ,\n"
+                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}_S_Fault)"
+                )
+        if rack.io_family in (IO_FAMILY_FLEX5000):
+            if mod.type in DIGITAL_TYPES:
+                ladder = (
+                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:{addr_slot}:I.ConnectionFaulted) ,\n"
                     f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}_S_Fault)"
                 )
