@@ -430,7 +430,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
                     f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}_S_Fault)"
                 )
-        if rack.io_family in (IO_FAMILY_FLEX5000):
+        elif rack.io_family in (IO_FAMILY_FLEX5000):
             if mod.type in DIGITAL_TYPES:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) XIC({rack.name}:{addr_slot}:I.ConnectionFaulted) ,\n"
