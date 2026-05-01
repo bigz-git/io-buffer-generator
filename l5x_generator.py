@@ -342,9 +342,16 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
         elif mod.type == "Thermocouple/RTD":
             ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
         elif mod.type == "Safety Input":
-            ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}Data)OTE({tag})"
+            if rack.io_family == IO_FAMILY_FLEX5000:
+                ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}.Data)OTE({tag})"
+            else:
+                ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}Data)OTE({tag})"
+            
         elif mod.type == "Safety Output":
-            ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Pt{b:02d}Data)"
+            if rack.io_family == IO_FAMILY_FLEX5000:
+                ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Pt{b:02d}.Data)"
+            else:
+                ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Pt{b:02d}Data)"
         else:
             continue
 
@@ -353,7 +360,11 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
 
         # Safety Input: extra status NOP rung
         if mod.type == "Safety Input":
-            status_ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}Status)NOP()"
+            if rack.io_family == IO_FAMILY_FLEX5000:
+                status_ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}.Status)NOP()"
+            else:
+                status_ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}Status)NOP()"
+            
             rungs.append(_rung_xml(rung_num, "", status_ladder))
             rung_num += 1
 
@@ -391,7 +402,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
     rungs.append(_rung_xml(rung_num, _mod_status_comment(), mcr_ladder))
     rung_num += 1
 
-    # AENT module fault rung
+    # Communication module fault rung
     aent_comment = f"Module Fault Detect Logic\nCommunication Module"
     aent_ladder = (
         f"[XIO({io_card}._S_Fault) GSV(Module,{rack.name},FaultCode,{rack.name}._S_FaultCode) NEQ({rack.name}._S_FaultCode,0) ,\n"
