@@ -392,7 +392,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
     rung_num += 1
 
     # AENT module fault rung
-    aent_comment = f"Module Fault Detect Logic\nPoint Bus AENT Module"
+    aent_comment = f"Module Fault Detect Logic\nCommunication Module"
     aent_ladder = (
         f"[XIO({io_card}._S_Fault) GSV(Module,{rack.name},FaultCode,{rack.name}._S_FaultCode) NEQ({rack.name}._S_FaultCode,0) ,\n"
         f"XIC({rack.name}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
@@ -408,14 +408,14 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
 
         # Safety modules: fault logic lives in the safety program — add a placeholder NOP
         if mod.type in SAFETY_TYPES:
-            comment = f"Module Fault Detect Logic is in Safety Program\nPlaceholder for Point Bus Module {mod.slot}"
+            comment = f"Module Fault Detect Logic is in Safety Program\nPlaceholder for Module {mod.slot}"
             rungs.append(_rung_xml(rung_num, comment, "NOP()"))
             rung_num += 1
             continue
 
         # Flex IO (1794): first module is slot 0; all others: first module is slot 1
         addr_slot = mod.slot - 1 if rack.io_family == IO_FAMILY_FLEX else mod.slot
-        mod_comment = f"Module Fault Detect Logic\nPoint Bus Module {addr_slot}"
+        mod_comment = f"Module Fault Detect Logic\nModule {addr_slot}"
 
         if rack.io_family in (IO_FAMILY_FLEX, IO_FAMILY_CLX):
             if mod.type in DIGITAL_TYPES:
