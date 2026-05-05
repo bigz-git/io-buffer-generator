@@ -2,29 +2,41 @@
 
 Python tool for generating Rockwell Studio 5000 `.l5x` import files from an Excel project workbook. Produces IO buffer routines and module status programs for Point IO, Flex IO, and ControlLogix IO racks.
 
-Available as both a CLI (`io_buffer_tool.py`) and a GUI (`gui.py`).
+Available as both a CLI (`io-buffer`) and a GUI (`io-buffer-gui`).
 
 ---
 
 ## Setup
 
-> **TODO:** Installation instructions will be updated once the tool is packaged as a wheel.
->
-> For now, install dependencies manually:
->
-> create virtual environment:
-> ```
-> python -m venv venv
-> ```
-> activate it:
-> ```
-> venv\Scripts\Activate
-> ```
-> install dependencies:
-> ```
-> pip install -r requirements.txt
-> ```
-> Requires Python 3.10+.
+### 1. Install Python
+
+Download and run the Python installer from [python.org](https://www.python.org/downloads/).
+
+During installation, check the box that says **"Add Python to PATH"** before clicking Install. If you miss this step, the commands below will not work.
+
+Requires Python 3.10 or newer.
+
+### 2. Download the installer file
+
+Go to the [Releases](../../releases) page of this repository and download the file ending in `.whl` (e.g. `io_buffer_generator-0.1.1-py3-none-any.whl`).
+
+### 3. Install the tool
+
+Open **Command Prompt** and run the following, replacing the filename with the one you downloaded:
+
+```
+pip install io_buffer_generator-0.1.1-py3-none-any.whl
+```
+
+This will automatically install everything the tool needs. You only need to do this once (or repeat it when a new version is released).
+
+### 4. Verify the installation
+
+```
+io-buffer --version
+```
+
+You should see the version number printed. If you get an error, close and reopen Command Prompt and try again.
 
 ---
 
@@ -81,7 +93,7 @@ Each project is stored in a single `.xlsx` workbook:
 ## CLI Usage
 
 ```
-python io_buffer_tool.py <command> [--workbook <path>] [--output <dir>]
+io-buffer <command> [--workbook <path>] [--output <dir>]
 ```
 
 If `--workbook` is not specified, the tool automatically uses the first `.xlsx` file found in the current directory.
@@ -106,10 +118,10 @@ If `--output` is not specified, generated files are written to the same director
 
 **Examples:**
 ```
-python io_buffer_tool.py init
-python io_buffer_tool.py add-rack --workbook MyProject.xlsx
-python io_buffer_tool.py validate
-python io_buffer_tool.py generate --output ./output
+io-buffer init
+io-buffer add-rack --workbook MyProject.xlsx
+io-buffer validate
+io-buffer generate --output ./output
 ```
 
 ### `fill-tags` — tag name convention
@@ -123,7 +135,7 @@ Existing tag values are never overwritten. Rows where the module type is not set
 ## GUI Usage
 
 ```
-python gui.py
+io-buffer-gui
 ```
 
 The GUI provides the same functionality as the CLI in a Tkinter window. On launch it auto-detects any `.xlsx` in the current directory.

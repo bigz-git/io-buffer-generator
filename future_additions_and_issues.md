@@ -1,16 +1,16 @@
 # Future Additions (in no particular order):
 - module presets?? - not sure about this
 - update-project command? - to update coversheet meta data
-- package into wheel for distribution
+
 - generate hardware?? - is this a bad idea?
 - --dry-run flag on generate - print what files would be written and their tag/routine counts without writing anything
 - summary command / enhanced list - show counts of filled vs. blank tags and descriptions per rack so you can see which racks are ready to generate vs. still incomplete
-- add version number
+
 - generate-cad error checking
     - if no module type is detected, prompts user for module type. there should be a check against the expected amount of channe/points (e.g 4 channel module but user types "IB8" should result in an error/warning)
 - add generate-cad command to gui
 - generate-cad for 1756 and 1794 io
-- 5094 - flex 5000 io (option not available with L7 processor)
+
 - error check for open workbook - otherwise, the write will fail and no message is displayed in gui area
 - 5069 - Compact 5000 io (option not available with L7 processor)
 
@@ -30,6 +30,9 @@
 - gui - DONE
 - remove-rack command - remove a rack sheet and its Cover Sheet entry without opening Excel - DONE
 - "Other" module type - blank buffer routine (JSR enable bit only), GSV fault detect in IO_Module_Status - DONE
+- 5094 - flex 5000 io (option not available with L7 processor) - DONE
+- add version number - DONE
+- package into wheel for distribution - DONE
 
 
 # in process/ needs testing
