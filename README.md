@@ -22,7 +22,13 @@ Go to the [Releases](../../releases) page of this repository and download the fi
 
 ### 3. Install the tool
 
-Open **Command Prompt** and run the following, replacing the filename with the one you downloaded:
+Open **Command Prompt** (or **PowerShell**) and navigate to the folder where you saved the `.whl` file. For example, if you saved it to your Downloads folder:
+
+```
+cd %USERPROFILE%\Downloads
+```
+
+Then run the following, replacing the filename with the one you downloaded:
 
 ```
 pip install io_buffer_generator-0.1.1-py3-none-any.whl
