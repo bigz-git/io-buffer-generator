@@ -346,7 +346,10 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
                 ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
 
         elif mod.type == "Analog Output":
-            ladder = f"MOV({tag},{rack.name}:{slot}:O.Ch{b}Data)"
+            if rack.io_family == IO_FAMILY_FLEX5000:
+                ladder = f"MOV({tag},{rack.name}:{slot}:O.Ch{b:02d}.Data)"
+            else:
+                ladder = f"MOV({tag},{rack.name}:{slot}:O.Ch{b}Data)"
 
         elif mod.type == "Thermocouple/RTD":
             ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
