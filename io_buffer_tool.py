@@ -78,7 +78,10 @@ def _get_workbook_path(args_path: str | None) -> str:
 # ---------------------------------------------------------------------------
 
 def cmd_init(args):
-    image_to_ascii('Quad Plus Brand Logo.png', width=30)
+    try:
+        image_to_ascii('Quad Plus Brand Logo.png', width=30)
+    except Exception:
+        pass
     os.system("")  # enable ANSI escape codes on Windows
     _BOLD  = "\033[1m"
     _CYAN  = "\033[94m"
