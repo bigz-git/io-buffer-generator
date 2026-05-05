@@ -15,6 +15,7 @@ from PIL import Image, ImageTk
 import excel_manager
 import l5x_generator
 from models import IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_FLEX5000, IO_FAMILY_POINT
+from _version import __version__
 
 COVER_SHEET = excel_manager.COVER_SHEET
 CAD_SHEET   = excel_manager.CAD_SHEET
@@ -28,7 +29,7 @@ HELP_SHEET  = excel_manager.HELP_SHEET
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("IO Buffer Generator")
+        self.title(f"IO Buffer Generator  v{__version__}")
         self.minsize(720, 420)
         try:
             img = Image.open(os.path.join(os.path.dirname(__file__), "Quad Plus Brand Logo.png"))
@@ -721,5 +722,9 @@ class RenameRackDialog(_BaseDialog):
 
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
+def main():
     App().mainloop()
+
+
+if __name__ == "__main__":
+    main()

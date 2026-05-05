@@ -20,6 +20,7 @@ import l5x_generator
 import cad_generator
 from ascii_logo import image_to_ascii
 from models import IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
+from _version import __version__
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +85,7 @@ def cmd_init(args):
     _WHITE = "\033[97m"
     _RESET = "\033[0m"
     print(f"\n{_BOLD}{_WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print(f"  {_CYAN}Quad Plus{_WHITE}  |  IO Buffer Generator Tool")
+    print(f"  {_CYAN}Quad Plus{_WHITE}  |  IO Buffer Generator Tool  v{__version__}")
     print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{_RESET}\n")
 
     filename = _prompt("Workbook filename (without .xlsx)", "project")
@@ -521,6 +522,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Point IO Buffer Generator — generate Studio 5000 .l5x files from Excel."
     )
+    parser.add_argument("--version", "-V", action="version", version=f"io-buffer-generator {__version__}")
     parser.add_argument("--workbook", "-w", help="Path to project .xlsx file")
     parser.add_argument("--output", "-o", help="Target directory for generated files")
 

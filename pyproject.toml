@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "io-buffer-generator"
+version = "0.1.0"
+description = "Generate Studio 5000 .l5x IO buffer files from Excel workbooks"
+requires-python = ">=3.10"
+dependencies = [
+    "openpyxl>=3.1.0",
+    "Pillow>=10.0.0",
+]
+
+[project.scripts]
+io-buffer = "io_buffer_tool:main"
+
+[project.gui-scripts]
+io-buffer-gui = "gui:main"
+
+[tool.setuptools]
+py-modules = [
+    "_version",
+    "ascii_logo",
+    "cad_generator",
+    "excel_manager",
+    "gui",
+    "io_buffer_tool",
+    "l5x_generator",
+    "models",
+]

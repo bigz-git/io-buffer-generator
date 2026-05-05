@@ -7,10 +7,18 @@
 # )
 # print(result.stdout)
 
+import os
+
 from PIL import Image
 
 def image_to_ascii(image_path, width=30):
     chars = '@#S%?*+;:,. '
+    # Resolve relative paths against this module's directory so the logo works
+    # both when run from source and when installed as a package.
+    if not os.path.isabs(image_path):
+        candidate = os.path.join(os.path.dirname(os.path.abspath(__file__)), image_path)
+        if os.path.exists(candidate):
+            image_path = candidate
     img = Image.open(image_path).convert('L')  # grayscale
     aspect = img.height / img.width
     img = img.resize((width, int(width * aspect * 0.55)))
