@@ -16,6 +16,13 @@ During installation, check the box that says **"Add Python to PATH"** before cli
 
 Requires Python 3.10 or newer.
 
+Confirm/check Python version from Command Line with:
+
+```
+python --version
+```
+You should see "Python 3.14.4" or similar.
+
 ### 2. Download the installer file
 
 Go to the [Releases](../../releases) page of this repository and download the file ending in `.whl` (e.g. `io_buffer_generator-0.1.1-py3-none-any.whl`).
