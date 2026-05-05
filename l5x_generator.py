@@ -110,8 +110,9 @@ def _tag_xml(name: str, tag_class: str, datatype: str, description: str,
     if is_udt:
         attrs = f'Name="{name}" TagType="Base" DataType="{datatype}" Constant="false" ExternalAccess="Read/Write"'
     elif is_array:
+        radix = "Float" if datatype == "REAL" else "Decimal"
         attrs = (f'Name="{name}" TagType="Base" DataType="{datatype}"'
-                 f' Dimensions="{dimension}" Radix="Decimal"'
+                 f' Dimensions="{dimension}" Radix="{radix}"'
                  f' Constant="false" ExternalAccess="Read/Write"')
     elif is_class_type:
         cls = "Safety" if tag_class == "Safety" else "Standard"
@@ -242,12 +243,13 @@ def _build_ctrl_tags(project: Project):
                 # QP_MODULE_TAGS_v01 named after the routine (= module's I/O tree name)
                 ctrl.append(_tag_xml(mod.routine, "Standard", "QP_MODULE_TAGS_v01",
                                      f"{mod.routine}\nModule", -1))
-                # INT array buffer tag
+                # CLX and Flex 5000 hardware exposes analog channels as REAL; others use INT
+                analog_dtype = "REAL" if rack.io_family in (IO_FAMILY_CLX, IO_FAMILY_FLEX5000) else "INT"
                 comments = [(_tag_operand(b.tag, sep), b.description)
                             for b in mod.bits if b.description]
                 ctrl.append(_tag_xml(
                     _base_name(mod.bits[0].tag, sep) if mod.bits else mod.routine,
-                    "Standard", "INT", "", len(mod.bits), comments
+                    "Standard", analog_dtype, "", len(mod.bits), comments
                 ))
 
             elif mod.type in SAFETY_TYPES:
@@ -327,6 +329,7 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
                 ladder = f"XIC({rack.name}:{slot}:I.Data.{b})OTE({tag})"
             else:
                 ladder = f"XIC({rack.name}:{slot}:I.{b})OTE({tag})"
+
         elif mod.type == "Output":
             if rack.io_family == IO_FAMILY_FLEX5000:
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Pt{b:02d}.Data)"
@@ -335,12 +338,19 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Data.{b})"
             else:
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.{b})"
+
         elif mod.type == "Analog Input":
-            ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
+            if rack.io_family == IO_FAMILY_FLEX5000:
+                ladder = f"MOV({rack.name}:{slot}:I.Ch{b:02d}.Data,{tag})"
+            else:
+                ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
+
         elif mod.type == "Analog Output":
             ladder = f"MOV({tag},{rack.name}:{slot}:O.Ch{b}Data)"
+
         elif mod.type == "Thermocouple/RTD":
             ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
+
         elif mod.type == "Safety Input":
             if rack.io_family == IO_FAMILY_FLEX5000:
                 ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}.Data)OTE({tag})"
