@@ -16,7 +16,7 @@ During installation, check the box that says **"Add Python to PATH"** before cli
 
 Requires Python 3.10 or newer.
 
-Confirm/check Python version from Command Line with:
+Confirm/check Python version: Open **Command Prompt** and type:
 
 ```
 python --version
