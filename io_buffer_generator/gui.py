@@ -12,10 +12,10 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 from openpyxl import load_workbook
 from PIL import Image, ImageTk
 
-import excel_manager
-import l5x_generator
-from models import IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_FLEX5000, IO_FAMILY_POINT
-from _version import __version__
+from . import excel_manager
+from . import l5x_generator
+from .models import IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_FLEX5000, IO_FAMILY_POINT
+from ._version import __version__
 
 COVER_SHEET = excel_manager.COVER_SHEET
 CAD_SHEET   = excel_manager.CAD_SHEET

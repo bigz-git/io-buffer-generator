@@ -15,11 +15,11 @@ Word-wrap rules:
 
 from openpyxl import load_workbook, Workbook
 
-from excel_manager import (
+from .excel_manager import (
     COVER_SHEET, CAD_SHEET, HELP_SHEET,
     COL_MOD_TYPE, COL_SLOT, COL_ROUTINE, COL_BIT, COL_DESC,
 )
-from models import OTHER_TYPES
+from .models import OTHER_TYPES
 
 MAX_DESC_A = 46
 MAX_DESC_B = 46

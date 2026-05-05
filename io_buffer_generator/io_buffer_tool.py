@@ -15,12 +15,12 @@ import glob
 import os
 import sys
 
-import excel_manager
-import l5x_generator
-import cad_generator
-from ascii_logo import image_to_ascii
-from models import IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
-from _version import __version__
+from . import excel_manager
+from . import l5x_generator
+from . import cad_generator
+from .ascii_logo import image_to_ascii
+from .models import IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
+from ._version import __version__
 
 
 # ---------------------------------------------------------------------------

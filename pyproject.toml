@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "io-buffer-generator"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Generate Studio 5000 .l5x IO buffer files from Excel workbooks"
 requires-python = ">=3.10"
 dependencies = [
@@ -13,19 +13,16 @@ dependencies = [
 ]
 
 [project.scripts]
-io-buffer = "io_buffer_tool:main"
+io-buffer = "io_buffer_generator.io_buffer_tool:main"
 
 [project.gui-scripts]
-io-buffer-gui = "gui:main"
+io-buffer-gui = "io_buffer_generator.gui:main"
 
-[tool.setuptools]
-py-modules = [
-    "_version",
-    "ascii_logo",
-    "cad_generator",
-    "excel_manager",
-    "gui",
-    "io_buffer_tool",
-    "l5x_generator",
-    "models",
-]
+[tool.setuptools.dynamic]
+version = {attr = "io_buffer_generator.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+io_buffer_generator = ["Quad Plus Brand Logo.png"]

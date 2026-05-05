@@ -9,7 +9,7 @@ Produces up to two files:
 import os
 from datetime import datetime
 
-from models import Project, Rack, Module, Bit, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000
+from .models import Project, Rack, Module, Bit, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000
 
 
 # ---------------------------------------------------------------------------
