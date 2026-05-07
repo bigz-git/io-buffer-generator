@@ -373,7 +373,7 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
 
         # Safety Input: extra status NOP rung
         if mod.type == "Safety Input":
-            if rack.io_family == IO_FAMILY_FLEX5000:
+            if rack.io_family == IO_FAMILY_FLEX5000 or rack.io_family == IO_FAMILY_CLX:
                 status_ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}.Status)NOP()"
             else:
                 status_ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}Status)NOP()"
