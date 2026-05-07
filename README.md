@@ -141,7 +141,7 @@ io-buffer generate --output ./output
 
 ### `fill-tags` — tag name convention
 
-Tag names are generated from the module type and the PLC routine name. For the drawing number to be embedded in the tag, the routine name must begin with `R` followed by a 4-digit drawing number (e.g. `R4103_IB8`). If the routine name does not follow this format, `fill-tags` will still run but the tag will use `XXXX` as a placeholder (e.g. `DI_XXXX.0`).
+Tag names are generated from the module type and the PLC routine name. For the drawing number to be embedded in the tag, the routine name must begin with `R` or `r` followed by one or more alphanumeric characters (e.g. `R4103_IB8`, `r410A_IB8`). If the routine name does not follow this format, `fill-tags` will still run but the tag will use `XXXX` as a placeholder (e.g. `DI_XXXX.0`).
 
 Existing tag values are never overwritten. Rows where the module type is not set are skipped with a warning.
 

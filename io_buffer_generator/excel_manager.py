@@ -104,8 +104,9 @@ def _setup_cli_help_sheet(ws) -> None:
         ("add-module",         "Add modules to an existing rack."),
         ("fill-tags",          (
             "Auto-fill blank tag names in column E from the module type and routine name. "
-            "Routine names must start with R#### (e.g. R4103) for the drawing number to appear "
-            "in the tag. Existing values are never overwritten; rows without a module type are skipped."
+            "Routine names must start with R or r followed by alphanumeric characters (e.g. R4103, r410A) "
+            "for the drawing number to appear in the tag. "
+            "Existing values are never overwritten; rows without a module type are skipped."
         )),
         ("fill-descriptions",  "Fill blank tag descriptions in column F with 'spare'."),
         ("generate",           "Generate .l5x files from the workbook."),
@@ -418,7 +419,7 @@ _TAG_PREFIX = {
     "Thermocouple/RTD": ("AI",  "bracket"),
 }
 
-_ROUTINE_RE = re.compile(r'^R(\d{4})')
+_ROUTINE_RE = re.compile(r'^R([A-Z0-9]+)', re.IGNORECASE)
 
 
 def _generate_tag(mod_type: str, routine: str, bit_index: int) -> str:
