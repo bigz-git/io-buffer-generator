@@ -94,7 +94,7 @@ Each project is stored in a single `.xlsx` workbook:
 | Type | Tag format | Notes |
 |---|---|---|
 | Input / Output | `ROUTINE.bit` (DINT) | Standard digital IO |
-| Safety Input / Safety Output | `ROUTINE.bit` (DINT, Safety class) | Point IO and Flex 5000 IO |
+| Safety Input / Safety Output | `ROUTINE.bit` (DINT, Safety class) | Point IO, Control Logix IO, and Flex 5000 IO families are supported|
 | Analog Input / Output | `ROUTINE[index]` (INT or REAL array) | |
 | Thermocouple/RTD | `ROUTINE[index]` (INT array) | |
 | Other | *(no buffer tag)* | JSR enable bit and GSV fault detect only. Use for specialty modules or as placeholder. |
