@@ -355,13 +355,13 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
             ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
 
         elif mod.type == "Safety Input":
-            if rack.io_family == IO_FAMILY_FLEX5000:
+            if rack.io_family == IO_FAMILY_FLEX5000 or rack.io_family == IO_FAMILY_CLX:
                 ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}.Data)OTE({tag})"
             else:
                 ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}Data)OTE({tag})"
             
         elif mod.type == "Safety Output":
-            if rack.io_family == IO_FAMILY_FLEX5000:
+            if rack.io_family == IO_FAMILY_FLEX5000 or rack.io_family == IO_FAMILY_CLX:
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Pt{b:02d}.Data)"
             else:
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Pt{b:02d}Data)"
