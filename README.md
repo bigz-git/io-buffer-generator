@@ -94,12 +94,14 @@ Each project is stored in a single `.xlsx` workbook:
 | Type | Tag format | Notes |
 |---|---|---|
 | Input / Output | `ROUTINE.bit` (DINT) | Standard digital IO |
-| Safety Input / Safety Output | `ROUTINE.bit` (DINT, Safety class) | Point IO only |
-| Analog Input / Output | `ROUTINE[index]` (INT array) | |
+| Safety Input / Safety Output | `ROUTINE.bit` (DINT, Safety class) | Point IO and Flex 5000 IO |
+| Analog Input / Output | `ROUTINE[index]` (INT or REAL array) | |
 | Thermocouple/RTD | `ROUTINE[index]` (INT array) | |
-| Other | *(no buffer tag)* | JSR enable bit and GSV fault detect only |
+| Other | *(no buffer tag)* | JSR enable bit and GSV fault detect only. Use for specialty modules or as placeholder. |
 
-**IO families supported:** 1734 (Point IO), 1794 (Flex IO), 1756 (ControlLogix IO).
+**IO families supported:** 1734 (Point IO), 1794 (Flex IO), 1756 (ControlLogix IO), 5094 (Flex 5000 IO).
+
+> Note: 5069 IO (Compact 5000 IO) is not currently supported but is planned to be added in a future version.
 
 ---
 
