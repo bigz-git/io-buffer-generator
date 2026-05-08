@@ -91,6 +91,9 @@ class App(tk.Tk):
         btn("List",     self.cmd_list)
         btn("Validate", self.cmd_validate)
         btn("Generate", self.cmd_generate)
+        self.split_var = tk.BooleanVar()
+        ttk.Checkbutton(btn_col, text="Split buffer into four programs",
+                        variable=self.split_var).pack(anchor="w", padx=2, pady=(2, 0))
 
         # Log area
         self.log = scrolledtext.ScrolledText(
@@ -406,9 +409,13 @@ class App(tk.Tk):
                     self._log(f"Warning: Rack '{rack.name}', slot {mod.slot} ({mod.routine}): "
                               f"{missing_desc} of {len(mod.bits)} tag descriptions are missing.")
 
+        split_programs = self.split_var.get()
+        if split_programs:
+            self._log("Split mode: Digital_Input_Buffer, Analog_Input_Buffer, "
+                      "Digital_Output_Buffer, Analog_Output_Buffer")
         self._log("Generating L5X files…")
         try:
-            written = l5x_generator.generate(project, out_dir)
+            written = l5x_generator.generate(project, out_dir, split_programs=split_programs)
         except Exception as e:
             self._log(f"Error during generation: {e}")
             return
