@@ -316,7 +316,7 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
     else:
         mcr_ladder = (
             f"XIC(JSR_ENABLE_{mod.routine})"
-            f"XIO({io_card}._S_Fault)"
+            f"XIO({io_card}._S_CommsFault)"
             f"XIO({rack.name}._S_Fault)"
             f"XIO({mod.routine}_S_Fault)"
             f"MCR()"
