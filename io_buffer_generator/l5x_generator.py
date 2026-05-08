@@ -65,8 +65,8 @@ _UDT_QP_PLC_TAGS_v02 = (
     '</Members></DataType>'
 )
 
-_UDT_QP_MODULE_TAGS_v01 = (
-    '<DataType Name="QP_MODULE_TAGS_v01" Family="NoFamily" Class="User"><Members>'
+_UDT_QP_MODULE_TAGS_v02 = (
+    '<DataType Name="QP_MODULE_TAGS_v02" Family="NoFamily" Class="User"><Members>'
     '<Member Name="_S_EntryStatus" DataType="INT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write"><Description><![CDATA[Entry Status]]></Description></Member>'
     '<Member Name="_S_FaultCode" DataType="INT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write"><Description><![CDATA[Module Fault Code]]></Description></Member>'
     '<Member Name="_S_ForceStatus" DataType="INT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write"><Description><![CDATA[Force Status]]></Description></Member>\n'
@@ -78,20 +78,16 @@ _UDT_QP_MODULE_TAGS_v01 = (
     '<Member Name="_S_Fault" DataType="BIT" Dimension="0" Radix="Decimal" Hidden="false" Target="ZZZZZZZZZZQP_MODULEv7" BitNumber="0" ExternalAccess="Read/Write"><Description><![CDATA[Module Fault]]></Description></Member>'
     '<Member Name="_S_Fault_On_ONS" DataType="BIT" Dimension="0" Radix="Decimal" Hidden="false" Target="ZZZZZZZZZZQP_MODULEv7" BitNumber="1" ExternalAccess="Read/Write"><Description><![CDATA[Fault On ONS bit]]></Description></Member>\n'
     '<Member Name="_S_Fault_Off_ONS" DataType="BIT" Dimension="0" Radix="Decimal" Hidden="false" Target="ZZZZZZZZZZQP_MODULEv7" BitNumber="2" ExternalAccess="Read/Write"><Description><![CDATA[Fault Off ONS bit]]></Description></Member>\n'
+    '<Member Name="_S_CommsOK" DataType="BIT" Dimension="0" Radix="Decimal" Hidden="false" Target="ZZZZZZZZZZQP_MODULEv7" BitNumber="3" ExternalAccess="Read/Write"><Description><![CDATA[Module Comms OK]]></Description></Member>\n'
+    '<Member Name="_S_CommsFault" DataType="BIT" Dimension="0" Radix="Decimal" Hidden="false" Target="ZZZZZZZZZZQP_MODULEv7" BitNumber="4" ExternalAccess="Read/Write"><Description><![CDATA[Module Comms Fault]]></Description></Member>\n'
     '<Member Name="_S_FaultTmr" DataType="TIMER" Dimension="0" Radix="NullType" Hidden="false" ExternalAccess="Read/Write"><Description><![CDATA[Module Fault Timer]]></Description></Member>'
     '</Members></DataType>'
 )
 
-_UDT_QP_MODULE_TAGS_v02 = (
-    '<DataType Name="QP_MODULE_TAGS_v02" Family="NoFamily" Class="User"><Members>'
-    '<Member Name="_S_EntryStatus" DataType="INT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write"><Description><![CDATA[Entry Status]]></Description></Member>'
-    '</Members></DataType>'
-)
 
 # Registry — add every new UDT XML string here to have it included in list_udts()
 _ALL_UDT_XML = (
     _UDT_QP_PLC_TAGS_v02,
-    _UDT_QP_MODULE_TAGS_v01,
     _UDT_QP_MODULE_TAGS_v02,
 )
 
@@ -102,7 +98,7 @@ _SEPARATOR = "=" * 137
 # XML helpers
 # ---------------------------------------------------------------------------
 
-_UDT_TYPES = {"QP_PLC_TAGS_v02", "QP_MODULE_TAGS_v01"}
+_UDT_TYPES = {"QP_PLC_TAGS_v02", "QP_MODULE_TAGS_v02"}
 # BOOL and DINT get Class ="Standard"/"Safety" but no Radix.
 # INT arrays get Radix="Decimal" but no Class.
 # UDT types get neither.
@@ -227,9 +223,9 @@ def _build_ctrl_tags(project: Project):
     ctrl.append(_tag_xml("PLC", "Standard", "QP_PLC_TAGS_v02", "Generic PLC Tags", -1))
 
     for rack in project.racks:
-        # Rack-level QP_MODULE_TAGS_v01
+        # Rack-level QP_MODULE_TAGS_v02
         ctrl.append(_tag_xml(
-            rack.name, "Standard", "QP_MODULE_TAGS_v01",
+            rack.name, "Standard", "QP_MODULE_TAGS_v02",
             f"{rack.name}\nMain Enet Module", -1
         ))
 
@@ -248,13 +244,13 @@ def _build_ctrl_tags(project: Project):
             base = _module_base(mod.routine)
 
             if mod.type in OTHER_TYPES:
-                # QP_MODULE_TAGS_v01 for GSV fault detect; no buffer I/O tag
-                ctrl.append(_tag_xml(mod.routine, "Standard", "QP_MODULE_TAGS_v01",
+                # QP_MODULE_TAGS_v02 for GSV fault detect; no buffer I/O tag
+                ctrl.append(_tag_xml(mod.routine, "Standard", "QP_MODULE_TAGS_v02",
                                      f"{mod.routine}\nModule", -1))
 
             elif mod.type in ANALOG_TYPES:
-                # QP_MODULE_TAGS_v01 named after the routine (= module's I/O tree name)
-                ctrl.append(_tag_xml(mod.routine, "Standard", "QP_MODULE_TAGS_v01",
+                # QP_MODULE_TAGS_v02 named after the routine (= module's I/O tree name)
+                ctrl.append(_tag_xml(mod.routine, "Standard", "QP_MODULE_TAGS_v02",
                                      f"{mod.routine}\nModule", -1))
                 # CLX and Flex 5000 hardware exposes analog channels as REAL; others use INT
                 analog_dtype = "REAL" if rack.io_family in (IO_FAMILY_CLX, IO_FAMILY_FLEX5000) else "INT"
@@ -614,10 +610,10 @@ def _build_standard_file(project: Project, target_name: str,
         f'<Controller Use="Context" Name="{project.controller_name}">',
         '<DataTypes Use="Context">',
         _UDT_QP_PLC_TAGS_v02,
-        _UDT_QP_MODULE_TAGS_v01,
+        _UDT_QP_MODULE_TAGS_v02,
         '</DataTypes>',
         '<Tags Use="Context">',
-        _tag_xml(project.io_network_card, "Standard", "QP_MODULE_TAGS_v01",
+        _tag_xml(project.io_network_card, "Standard", "QP_MODULE_TAGS_v02",
                  f"{project.io_network_card}\nMain Enet Module", -1),
     ]
     lines.extend(ctrl_tags)
