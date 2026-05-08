@@ -455,9 +455,16 @@ def cmd_generate(args):
                 print(f"Warning: Rack '{rack.name}', slot {mod.slot} ({mod.routine}): "
                       f"{missing_desc} of {len(mod.bits)} tag descriptions are missing.")
 
+    split_raw = input("Split IO buffer into 4 separate programs? [y/N]: ").strip().lower()
+    split_programs = split_raw == "y"
+    if split_programs:
+        print("  Programs: Digital_Input_Buffer, Analog_Input_Buffer, "
+              "Digital_Output_Buffer, Analog_Output_Buffer")
+    print()
+
     print("Generating L5X files...")
     try:
-        written = l5x_generator.generate(project, output_dir)
+        written = l5x_generator.generate(project, output_dir, split_programs=split_programs)
     except Exception as e:
         print(f"Error during generation: {e}")
         raise

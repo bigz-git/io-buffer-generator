@@ -561,6 +561,31 @@ def _jsr_enable_tag(name: str, tag_class: str = "Standard") -> str:
 
 
 # ---------------------------------------------------------------------------
+# Split-program bucket helper
+# ---------------------------------------------------------------------------
+
+_SPLIT_PROGRAM_NAMES = [
+    "Digital_Input_Buffer",
+    "Analog_Input_Buffer",
+    "Digital_Output_Buffer",
+    "Analog_Output_Buffer",
+]
+
+
+def _split_bucket(mod_type: str) -> str | None:
+    """Map a module type to its split program name. Returns None for safety types."""
+    if mod_type in OTHER_TYPES or mod_type == "Input":
+        return "Digital_Input_Buffer"
+    if mod_type in ("Analog Input", "Thermocouple/RTD"):
+        return "Analog_Input_Buffer"
+    if mod_type == "Output":
+        return "Digital_Output_Buffer"
+    if mod_type == "Analog Output":
+        return "Analog_Output_Buffer"
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Top-level generate
 # ---------------------------------------------------------------------------
 
@@ -597,15 +622,18 @@ def _write_l5x(lines: list, path: str) -> None:
         f.write('\n'.join(lines))
 
 
-def generate(project: Project, output_dir: str) -> list:
+def generate(project: Project, output_dir: str, split_programs: bool = False) -> list:
     """
     Generate .l5x files into output_dir.
     Returns list of file paths written.
 
     Output files:
-      IO_Files_Rev_<ts>.l5x             — IO_Buffer_Files + IO_Module_Status programs
-      Safety_IO_Files_Rev_<ts>.l5x      — Safety_IO_Buffer_Files + Safety_IO_Module_Status programs
+      IO_Files_Rev_<ts>.l5x             — IO_Buffer_Files (or 4 split programs) + IO_Module_Status
+      Safety_IO_Files_Rev_<ts>.l5x      — Safety_IO_Buffer_Files + Safety_IO_Module_Status
                                           (only if safety modules present)
+
+    When split_programs=True, IO_Buffer_Files is replaced by four programs:
+      Digital_Input_Buffer, Analog_Input_Buffer, Digital_Output_Buffer, Analog_Output_Buffer
     """
     ts = datetime.now().strftime("%m%d%y_%H%M")
     written = []
@@ -629,6 +657,11 @@ def generate(project: Project, output_dir: str) -> list:
 
     sfty_racks_with_modules = []  # list of (rack_name, [mod_routines]) for Modules context in safety file
 
+    # Split-mode accumulators keyed by program name
+    split_routine_names = {name: [] for name in _SPLIT_PROGRAM_NAMES}
+    split_local_tags    = {name: [] for name in _SPLIT_PROGRAM_NAMES}
+    split_routines      = {name: [] for name in _SPLIT_PROGRAM_NAMES}
+
     for rack in project.racks:
         mod_status_names.append(rack.name)
         mod_local_tags.append(_jsr_enable_tag(rack.name))
@@ -644,6 +677,12 @@ def generate(project: Project, output_dir: str) -> list:
                 sfty_local_tags.append(_jsr_enable_tag(mod.routine, "Safety"))
                 sfty_routines.append(_build_buffer_routine(rack, mod, project.io_network_card))
                 rack_sfty_mods.append(mod.routine)
+            elif split_programs:
+                bucket = _split_bucket(mod.type)
+                if bucket:
+                    split_routine_names[bucket].append(mod.routine)
+                    split_local_tags[bucket].append(_jsr_enable_tag(mod.routine))
+                    split_routines[bucket].append(_build_buffer_routine(rack, mod, project.io_network_card))
             else:
                 buff_routine_names.append(mod.routine)
                 buff_local_tags.append(_jsr_enable_tag(mod.routine))
@@ -655,18 +694,41 @@ def generate(project: Project, output_dir: str) -> list:
             sfty_mod_status_routines.append(_build_safety_mod_status_routine(rack))
             sfty_racks_with_modules.append((rack.name, rack_sfty_mods))
 
-    # ---- IO_Files (IO_Buffer_Files + IO_Module_Status combined) ----
+    # ---- Buffer programs (combined or split) ----
+    if split_programs:
+        buffer_program_lines = []
+        for prog_name in _SPLIT_PROGRAM_NAMES:
+            buffer_program_lines += [
+                f'<Program Use="Target" Name="{prog_name}" '
+                'MainRoutineName="Subroutine_Calls" Class="Standard">',
+                '<Tags>',
+                *split_local_tags[prog_name],
+                '</Tags>',
+                '<Routines>',
+                _build_calls_routine(split_routine_names[prog_name]),
+                *split_routines[prog_name],
+                '</Routines>',
+                '</Program>',
+            ]
+        std_target_name = _SPLIT_PROGRAM_NAMES[0]
+    else:
+        buffer_program_lines = [
+            '<Program Use="Target" Name="IO_Buffer_Files" '
+            'MainRoutineName="Subroutine_Calls" Class="Standard">',
+            '<Tags>',
+            *buff_local_tags,
+            '</Tags>',
+            '<Routines>',
+            _build_calls_routine(buff_routine_names),
+            *buff_routines,
+            '</Routines>',
+            '</Program>',
+        ]
+        std_target_name = "IO_Buffer_Files"
+
+    # ---- IO_Files (buffer programs + IO_Module_Status combined) ----
     combined_programs = [
-        '<Program Use="Target" Name="IO_Buffer_Files" '
-        'MainRoutineName="Subroutine_Calls" Class="Standard">',
-        '<Tags>',
-        *buff_local_tags,
-        '</Tags>',
-        '<Routines>',
-        _build_calls_routine(buff_routine_names),
-        *buff_routines,
-        '</Routines>',
-        '</Program>',
+        *buffer_program_lines,
         '<Program Use="Target" Name="IO_Module_Status" '
         'MainRoutineName="Subroutine_Calls" Class="Standard">',
         '<Tags>',
@@ -679,7 +741,7 @@ def generate(project: Project, output_dir: str) -> list:
         '</Program>',
     ]
     std_path = os.path.join(output_dir, f"IO_Files_Rev_{ts}.l5x")
-    _write_l5x(_build_standard_file(project, "IO_Buffer_Files", ctrl_tags, combined_programs), std_path)
+    _write_l5x(_build_standard_file(project, std_target_name, ctrl_tags, combined_programs), std_path)
     written.append(std_path)
 
     # ---- Safety L5X (only if safety modules present) ----
