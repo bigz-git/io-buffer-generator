@@ -501,6 +501,27 @@ def cmd_generate_cad(args):
     print(f"Written: {filename}")
 
 
+def cmd_list_udts(args):
+    udts = l5x_generator.list_udts()
+
+    if args.udt:
+        udts = [u for u in udts if u["name"].lower() == args.udt.lower()]
+        if not udts:
+            print(f"Error: UDT '{args.udt}' not found.")
+            print("Available UDTs: " + ", ".join(u["name"] for u in l5x_generator.list_udts()))
+            sys.exit(1)
+
+    print("UDTs being used in this tool include:")
+    for udt in udts:
+        members = udt["members"]
+        print(f"\n{udt['name']}  ({len(members)} members)")
+        print(f"  {'Member':<42}  {'DataType':<10}  Description")
+        print(f"  {'─'*42}  {'─'*10}  {'─'*50}")
+        for m in members:
+            print(f"  {m['name']:<42}  {m['datatype']:<10}  {m['description']}")
+    print()
+
+
 def cmd_list(args):
     path = _get_workbook_path(args.workbook)
 
@@ -561,6 +582,8 @@ def main():
     sub.add_parser("generate",     help="Generate .l5x files from the workbook")
     sub.add_parser("generate-cad", help="Generate CAD description .xlsx from the workbook")
     sub.add_parser("list",         help="List racks and modules in the workbook")
+    p_udts = sub.add_parser("list-udts", help="List UDTs and their members used in generated L5X files")
+    p_udts.add_argument("--udt", metavar="NAME", help="Show only the named UDT (e.g. QP_PLC_TAGS_v02)")
 
     args = parser.parse_args()
 
@@ -576,6 +599,7 @@ def main():
         "generate":          cmd_generate,
         "generate-cad":      cmd_generate_cad,
         "list":              cmd_list,
+        "list-udts":         cmd_list_udts,
     }
     commands[args.command](args)
 

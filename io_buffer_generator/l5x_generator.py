@@ -82,6 +82,19 @@ _UDT_QP_MODULE_TAGS_v01 = (
     '</Members></DataType>'
 )
 
+_UDT_QP_MODULE_TAGS_v02 = (
+    '<DataType Name="QP_MODULE_TAGS_v02" Family="NoFamily" Class="User"><Members>'
+    '<Member Name="_S_EntryStatus" DataType="INT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write"><Description><![CDATA[Entry Status]]></Description></Member>'
+    '</Members></DataType>'
+)
+
+# Registry — add every new UDT XML string here to have it included in list_udts()
+_ALL_UDT_XML = (
+    _UDT_QP_PLC_TAGS_v02,
+    _UDT_QP_MODULE_TAGS_v01,
+    _UDT_QP_MODULE_TAGS_v02,
+)
+
 _SEPARATOR = "=" * 137
 
 
@@ -620,6 +633,39 @@ def _build_standard_file(project: Project, target_name: str,
 def _write_l5x(lines: list, path: str) -> None:
     with open(path, "w", encoding="utf-8") as f:
         f.write('\n'.join(lines))
+
+
+def list_udts() -> list:
+    """
+    Parse the embedded UDT XML strings and return structured member data.
+
+    Returns a list of dicts:
+        {"name": str, "members": [{"name": str, "datatype": str, "bit": int|None, "description": str}]}
+    Hidden backing members (ZZZZZZZZZZQP_*) are excluded.
+    """
+    import xml.etree.ElementTree as ET
+
+    result = []
+    for xml_str in _ALL_UDT_XML:
+        root = ET.fromstring(xml_str)
+        udt_name = root.get("Name")
+        members = []
+        for member in root.findall("Members/Member"):
+            if member.get("Hidden") == "true":
+                continue
+            bit_raw = member.get("BitNumber")
+            desc_el = member.find("Description")
+            description = ""
+            if desc_el is not None and desc_el.text:
+                description = desc_el.text.strip()
+            members.append({
+                "name":        member.get("Name"),
+                "datatype":    member.get("DataType"),
+                "bit":         int(bit_raw) if bit_raw is not None else None,
+                "description": description,
+            })
+        result.append({"name": udt_name, "members": members})
+    return result
 
 
 def generate(project: Project, output_dir: str, split_programs: bool = False) -> list:

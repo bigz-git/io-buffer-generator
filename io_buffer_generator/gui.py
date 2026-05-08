@@ -88,9 +88,10 @@ class App(tk.Tk):
         btn("Fill Descriptions", self.cmd_fill_descriptions)
 
         section("Tools")
-        btn("List",     self.cmd_list)
-        btn("Validate", self.cmd_validate)
-        btn("Generate", self.cmd_generate)
+        btn("List",      self.cmd_list)
+        btn("List UDTs", self.cmd_list_udts)
+        btn("Validate",  self.cmd_validate)
+        btn("Generate",  self.cmd_generate)
         self.split_var = tk.BooleanVar()
         ttk.Checkbutton(btn_col, text="Split buffer into four programs",
                         variable=self.split_var).pack(anchor="w", padx=2, pady=(2, 0))
@@ -370,6 +371,18 @@ class App(tk.Tk):
                 routine = mod.routine or "(no routine name)"
                 self._log(f"    Slot {mod.slot:>2}  {mod.type:<20}  "
                           f"{len(mod.bits):>2} channels  → {routine}")
+
+    def cmd_list_udts(self):
+        self._log_clear()
+        self._log("UDTs being used in this tool include:")
+        for udt in l5x_generator.list_udts():
+            members = udt["members"]
+            self._log(f"{udt['name']}  ({len(members)} members)")
+            self._log(f"  {'Member':<42}  {'DataType':<10}  Description")
+            self._log(f"  {'─'*42}  {'─'*10}  {'─'*50}")
+            for m in members:
+                self._log(f"  {m['name']:<42}  {m['datatype']:<10}  {m['description']}")
+            self._log("")
 
     def cmd_generate(self):
         path = self._workbook_path()
