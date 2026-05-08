@@ -1,18 +1,20 @@
 # Future Additions (in no particular order):
 - module presets?? - not sure about this
 - update-project command? - to update coversheet meta data
-
 - generate hardware?? - is this a bad idea?
 - --dry-run flag on generate - print what files would be written and their tag/routine counts without writing anything
 - summary command / enhanced list - show counts of filled vs. blank tags and descriptions per rack so you can see which racks are ready to generate vs. still incomplete
-
 - generate-cad error checking
     - if no module type is detected, prompts user for module type. there should be a check against the expected amount of channe/points (e.g 4 channel module but user types "IB8" should result in an error/warning)
 - add generate-cad command to gui
 - generate-cad for 1756 and 1794 io
-
 - error check for open workbook - otherwise, the write will fail and no message is displayed in gui area
 - 5069 - Compact 5000 io (option not available with L7 processor)
+- add option to seperate IO buffer into 4 different programs (Digital_Input_Buffer, Analog_Input_Buffer, Digital_Output_Buffer, Analog_Output_Buffer)
+- add option for multiple network cards
+- update Flex 5000 module status routines with Bobs program format
+- fix safety buffer routine (remove JSR enable bits and update with safety UDT tag)
+
 
 
 # Completed:
