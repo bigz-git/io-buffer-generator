@@ -2,23 +2,28 @@
 Manages reading and writing the project .xlsx workbook.
 
 Sheet layout:
-  Sheet 1: "Cover Sheet"  — project metadata and rack summary
-  Sheet 2: "CLI Tool Help" — usage instructions for the command-line interface
-  Sheet 3+: one sheet per rack
+  Sheet 1: "Cover Sheet"    — project metadata and rack summary
+  Sheet 2: "Network Cards"  — IO network card names and backplane slot numbers
+  Sheet 3: "CLI Tool Help"  — usage instructions for the command-line interface
+  Sheet 4+: one sheet per rack
 
 Cover Sheet cells:
   A2: Software Version
   B2: Controller Name
-  C2: Primary IO Network Card Name (required)
   D2: Project Number
   E2: Project Description
-  F2, F3, ...: Additional IO Network Card Names (optional, read until empty)
 
 Cover Sheet rack table (rows 4+):
   A4/A5+: Rack Name
   B4/B5+: IO Point Count (auto-populated formula)
   C4/C5+: IO Family
   D4/D5+: Network Card (which IO network card this rack connects through)
+
+Network Cards sheet:
+  A1: Card Name (header)
+  B1: Slot (header)
+  A2+: Card name
+  B2+: Backplane slot number
 
 Rack sheet columns (1-indexed):
   A: Module Type (dropdown)
@@ -36,11 +41,12 @@ from openpyxl.styles import Alignment, Border, Side, Font
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import get_column_letter
 
-from .models import Bit, Module, Rack, Project, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000
+from .models import Bit, Module, Rack, Project, NetworkCard, MODULE_TYPE_DROPDOWN, ALL_MODULE_TYPES, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000
 
-COVER_SHEET = "Cover Sheet"
-CAD_SHEET   = "CAD_Descriptions"
-HELP_SHEET  = "CLI Tool Help"
+COVER_SHEET         = "Cover Sheet"
+CAD_SHEET           = "CAD_Descriptions"
+HELP_SHEET          = "CLI Tool Help"
+NETWORK_CARDS_SHEET = "Network Cards"
 
 COL_MOD_TYPE = 1   # A
 COL_SLOT     = 2   # B
@@ -66,10 +72,14 @@ def create_workbook(path: str, software_version: str, controller_name: str,
     # Sheet 1 — Cover Sheet
     ws_cover = wb.active
     ws_cover.title = COVER_SHEET
-    _setup_cover_sheet(ws_cover, software_version, controller_name, io_network_cards,
+    _setup_cover_sheet(ws_cover, software_version, controller_name,
                        project_number, project_description)
 
-    # Sheet 2 — CLI Tool Help
+    # Sheet 2 — Network Cards
+    ws_nc = wb.create_sheet(NETWORK_CARDS_SHEET)
+    _setup_network_cards_sheet(ws_nc, io_network_cards)
+
+    # Sheet 3 — CLI Tool Help
     ws_help = wb.create_sheet(HELP_SHEET)
     _setup_cli_help_sheet(ws_help)
 
@@ -77,22 +87,16 @@ def create_workbook(path: str, software_version: str, controller_name: str,
 
 
 def _setup_cover_sheet(ws, software_version: str, controller_name: str,
-                       io_network_cards: list,
                        project_number: str = "", project_description: str = "") -> None:
     ws["A1"] = "Software Version"
     ws["B1"] = "Controller Name"
-    ws["C1"] = "IO Network Card Names"
     ws["D1"] = "Project Number"
     ws["E1"] = "Project Description"
-    ws["F1"] = "Additional IO Network Cards (F2, F3, ...)"
 
     ws["A2"] = software_version
     ws["B2"] = controller_name
-    ws["C2"] = io_network_cards[0] if io_network_cards else ""
     ws["D2"] = project_number
     ws["E2"] = project_description
-    for i, card in enumerate(io_network_cards[1:], start=2):
-        ws.cell(row=i, column=6, value=card)  # column F
 
     ws["A4"] = "Rack Name"
     ws["B4"] = "IO Point Count"
@@ -107,7 +111,19 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str,
     ws.column_dimensions["C"].width = 25
     ws.column_dimensions["D"].width = 25
     ws.column_dimensions["E"].width = 40
-    ws.column_dimensions["F"].width = 32
+
+
+def _setup_network_cards_sheet(ws, io_network_cards: list) -> None:
+    ws["A1"] = "Card Name"
+    ws["B1"] = "Slot"
+    for cell in [ws["A1"], ws["B1"]]:
+        cell.font = Font(bold=True)
+        cell.border = HEADER_BORDER
+    ws.column_dimensions["A"].width = 32
+    ws.column_dimensions["B"].width = 10
+    for i, card in enumerate(io_network_cards, start=2):
+        ws.cell(row=i, column=1, value=card.name)
+        ws.cell(row=i, column=2, value=card.slot)
 
 
 def _setup_cli_help_sheet(ws) -> None:
@@ -159,7 +175,7 @@ def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMIL
     """
     modules: list of (num_bits: int,) for each module — slot numbers auto-assigned 1..N.
     Creates a new rack sheet and updates the Cover Sheet summary.
-    network_card: which IO network card this rack connects through (must match a card in C2/F2+).
+    network_card: which IO network card this rack connects through (must match a card in the Network Cards sheet).
     """
     wb = load_workbook(path)
 
@@ -256,6 +272,46 @@ def _append_cover_summary(ws_cover, rack_name: str, io_family: str = IO_FAMILY_P
 
 
 # ---------------------------------------------------------------------------
+# Network card helpers
+# ---------------------------------------------------------------------------
+
+def _read_network_cards(wb) -> list:
+    """Return list[NetworkCard] from 'Network Cards' sheet, or fall back to cover sheet C2/F2+."""
+    if NETWORK_CARDS_SHEET in wb.sheetnames:
+        ws = wb[NETWORK_CARDS_SHEET]
+        cards = []
+        for row in range(2, ws.max_row + 1):
+            name_val = ws.cell(row=row, column=1).value
+            if name_val is None or not str(name_val).strip():
+                break
+            name = str(name_val).strip()
+            slot_val = ws.cell(row=row, column=2).value
+            slot = int(slot_val) if isinstance(slot_val, (int, float)) and not isinstance(slot_val, bool) else 0
+            cards.append(NetworkCard(name=name, slot=slot))
+        return cards
+    # Backward compatibility: read from cover sheet C2 (primary) and F2+ (additional)
+    ws_cover = wb[COVER_SHEET]
+    primary = str(ws_cover["C2"].value or "").strip()
+    if not primary:
+        return []
+    cards = [NetworkCard(name=primary, slot=0)]
+    for f_row in range(2, ws_cover.max_row + 1):
+        val = ws_cover.cell(row=f_row, column=6).value
+        if val is None or not str(val).strip():
+            break
+        cards.append(NetworkCard(name=str(val).strip(), slot=0))
+    return cards
+
+
+def read_network_cards(path: str) -> list:
+    """Load and return the list of NetworkCard objects from the workbook."""
+    wb = load_workbook(path, data_only=True)
+    cards = _read_network_cards(wb)
+    wb.close()
+    return cards
+
+
+# ---------------------------------------------------------------------------
 # Add modules to existing rack
 # ---------------------------------------------------------------------------
 
@@ -343,23 +399,20 @@ def read_project(path: str) -> Project:
 
     software_version    = str(ws_cover["A2"].value or "").strip()
     controller_name     = str(ws_cover["B2"].value or "").strip()
-    primary_card        = str(ws_cover["C2"].value or "").strip()
     project_number      = str(ws_cover["D2"].value or "").strip()
     project_description = str(ws_cover["E2"].value or "").strip()
 
-    if not software_version or not controller_name or not primary_card:
+    if not software_version or not controller_name:
         raise ValueError(
-            "Cover Sheet is missing Software Version (A2), Controller Name (B2), "
-            "or IO Network Card Name (C2)."
+            "Cover Sheet is missing Software Version (A2) or Controller Name (B2)."
         )
 
-    # Collect all network cards: C2 (required) + F2, F3, ... (optional additional cards)
-    io_network_cards = [primary_card]
-    for f_row in range(2, ws_cover.max_row + 1):
-        val = ws_cover.cell(row=f_row, column=6).value  # column F
-        if val is None or not str(val).strip():
-            break
-        io_network_cards.append(str(val).strip())
+    io_network_cards = _read_network_cards(wb)
+    if not io_network_cards:
+        raise ValueError(
+            "No IO Network Cards found. Add cards to the 'Network Cards' sheet."
+        )
+    card_names = [c.name for c in io_network_cards]
 
     # Build io_family and network_card maps from cover sheet rack table (rows 5+)
     valid_families = {IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000}
@@ -388,23 +441,23 @@ def read_project(path: str) -> Project:
             if not nc_str:
                 # Backward-compatible: auto-assign the only card when there is just one
                 if len(io_network_cards) == 1:
-                    nc_str = io_network_cards[0]
+                    nc_str = card_names[0]
                 else:
                     raise ValueError(
                         f"Cover Sheet row {row}: Network Card is not assigned for rack '{rname_str}'. "
-                        f"Available cards: {', '.join(io_network_cards)}."
+                        f"Available cards: {', '.join(card_names)}."
                     )
-            elif nc_str not in io_network_cards:
+            elif nc_str not in card_names:
                 raise ValueError(
                     f"Cover Sheet row {row}: Network Card '{nc_str}' for rack '{rname_str}' "
                     f"is not in the IO Network Card list. "
-                    f"Available: {', '.join(io_network_cards)}."
+                    f"Available: {', '.join(card_names)}."
                 )
             network_card_map[rname_str] = nc_str
 
     racks = []
     for ws in wb.worksheets:
-        if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET):
+        if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET, NETWORK_CARDS_SHEET):
             continue
         rack = _read_rack_sheet(ws)
         if ws.title not in family_map:
@@ -414,7 +467,7 @@ def read_project(path: str) -> Project:
                 f"({', '.join(sorted(valid_families))})."
             )
         rack.io_family = family_map[ws.title]
-        rack.network_card = network_card_map.get(ws.title, io_network_cards[0])
+        rack.network_card = network_card_map.get(ws.title, card_names[0])
         if rack.modules:
             racks.append(rack)
 
@@ -483,7 +536,7 @@ def _check_all_routine_uniqueness(wb) -> None:
     seen: dict[str, tuple[str, int]] = {}  # routine → (rack_name, slot)
 
     for ws in wb.worksheets:
-        if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET):
+        if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET, NETWORK_CARDS_SHEET):
             continue
 
         merged_values: dict[tuple[int, int], object] = {}
@@ -525,7 +578,7 @@ def _check_all_tag_uniqueness(wb) -> None:
     seen: dict[str, tuple[str, object, int]] = {}  # tag → (rack_name, slot, row)
 
     for ws in wb.worksheets:
-        if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET):
+        if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET, NETWORK_CARDS_SHEET):
             continue
 
         merged_values: dict[tuple[int, int], object] = {}

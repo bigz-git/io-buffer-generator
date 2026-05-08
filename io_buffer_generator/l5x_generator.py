@@ -412,26 +412,26 @@ def _build_main_chassis_routine(io_network_cards: list) -> str:
     for card in io_network_cards:
         card_comment = (
             f"{_SEPARATOR}\n"
-            f"Main Chassis Slot 00 EN2T Module Status Logic\n"
+            f"Main Chassis Slot {card.slot:02d} EN2T Module Status Logic\n"
             f"{_SEPARATOR}"
         )
         rungs.append(_rung_xml(rung_num, card_comment,
-            f"GSV(Module,{card},EntryStatus,{card}._S_EntryStatus)"))
+            f"GSV(Module,{card.name},EntryStatus,{card.name}._S_EntryStatus)"))
         rung_num += 1
 
         rungs.append(_rung_xml(rung_num, "", (
-            f"XIO({card}._S_EntryStatus.12)"
-            f"XIO({card}._S_EntryStatus.13)"
-            f"XIC({card}._S_EntryStatus.14)"
-            f"XIO({card}._S_EntryStatus.15)"
-            f"OTE({card}._S_CommsOK)"
+            f"XIO({card.name}._S_EntryStatus.12)"
+            f"XIO({card.name}._S_EntryStatus.13)"
+            f"XIC({card.name}._S_EntryStatus.14)"
+            f"XIO({card.name}._S_EntryStatus.15)"
+            f"OTE({card.name}._S_CommsOK)"
         )))
         rung_num += 1
 
         rungs.append(_rung_xml(rung_num, "", (
-            f"[XIC(PLC._P_Module_Faults_Detect) XIO({card}._S_CommsOK) ,"
-            f"XIC({card}._S_CommsFault) XIO(PLC._R_Module_Faults_Reset) ]"
-            f"OTE({card}._S_CommsFault)"
+            f"[XIC(PLC._P_Module_Faults_Detect) XIO({card.name}._S_CommsOK) ,"
+            f"XIC({card.name}._S_CommsFault) XIO(PLC._R_Module_Faults_Reset) ]"
+            f"OTE({card.name}._S_CommsFault)"
         )))
         rung_num += 1
 
@@ -658,7 +658,7 @@ def _build_standard_file(project: Project, target_name: str,
         _UDT_QP_MODULE_TAGS_v02,
         '</DataTypes>',
         '<Tags Use="Context">',
-        *[_tag_xml(card, "Standard", "QP_MODULE_TAGS_v02", f"{card}\nMain Enet Module", -1)
+        *[_tag_xml(card.name, "Standard", "QP_MODULE_TAGS_v02", f"{card.name}\nMain Enet Module", -1)
           for card in project.io_network_cards],
     ]
     lines.extend(ctrl_tags)

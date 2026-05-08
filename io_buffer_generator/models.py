@@ -17,6 +17,12 @@ IO_FAMILY_DROPDOWN = f"{IO_FAMILY_POINT},{IO_FAMILY_FLEX},{IO_FAMILY_CLX},{IO_FA
 
 
 @dataclass
+class NetworkCard:
+    name: str
+    slot: int = 0
+
+
+@dataclass
 class Bit:
     index: int        # 0-indexed bit/channel within module
     tag: str          # buffer tag name, e.g. "CONV_01_IN.0" or "CONV_01_AIN[0]"

@@ -14,7 +14,7 @@ from PIL import Image, ImageTk
 
 from . import excel_manager
 from . import l5x_generator
-from .models import IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_FLEX5000, IO_FAMILY_POINT
+from .models import IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_FLEX5000, IO_FAMILY_POINT, NetworkCard
 from ._version import __version__
 
 COVER_SHEET = excel_manager.COVER_SHEET
@@ -130,7 +130,8 @@ class App(tk.Tk):
 
     def _get_rack_names(self, path: str) -> list[str]:
         wb = load_workbook(path, read_only=True)
-        names = [s for s in wb.sheetnames if s not in (COVER_SHEET, CAD_SHEET, HELP_SHEET)]
+        names = [s for s in wb.sheetnames
+                 if s not in (COVER_SHEET, CAD_SHEET, HELP_SHEET, excel_manager.NETWORK_CARDS_SHEET)]
         wb.close()
         return names
 
@@ -180,22 +181,10 @@ class App(tk.Tk):
         path = self._workbook_path()
         if not path:
             return
-        # Read available network cards from workbook
-        from openpyxl import load_workbook as lw
-        wb_tmp = lw(path, data_only=True)
-        ws_tmp = wb_tmp[COVER_SHEET]
-        io_network_cards = []
-        c2 = str(ws_tmp["C2"].value or "").strip()
-        if c2:
-            io_network_cards.append(c2)
-        for f_row in range(2, ws_tmp.max_row + 1):
-            val = ws_tmp.cell(row=f_row, column=6).value
-            if val is None or not str(val).strip():
-                break
-            io_network_cards.append(str(val).strip())
-        wb_tmp.close()
+        network_cards = excel_manager.read_network_cards(path)
+        io_network_card_names = [c.name for c in network_cards]
 
-        dlg = AddRackDialog(self, io_network_cards)
+        dlg = AddRackDialog(self, io_network_card_names)
         self.wait_window(dlg)
         if not dlg.result:
             return
@@ -378,7 +367,7 @@ class App(tk.Tk):
         self._log(f"  Controller        : {project.controller_name}")
         for i, card in enumerate(project.io_network_cards):
             label = "IO Network Card   :" if i == 0 else "                   "
-            self._log(f"  {label} {card}")
+            self._log(f"  {label} {card.name}  (slot {card.slot})")
         self._log(f"\nRacks ({len(project.racks)}):")
         for rack in project.racks:
             total_bits = sum(len(m.bits) for m in rack.modules)
@@ -495,16 +484,16 @@ class _BaseDialog(tk.Toplevel):
 
 class InitDialog(_BaseDialog):
     _FIELDS = [
-        ("filename",            "Filename (without .xlsx)",          "project"),
-        ("project_number",      "Project Number",                    ""),
-        ("project_description", "Project Description",               ""),
-        ("software_version",    "Software Version",                  ""),
-        ("controller_name",     "Controller Name",                   ""),
-        ("io_network_cards",    "IO Network Card Names\n(one per line)", ""),
+        ("filename",            "Filename (without .xlsx)", "project"),
+        ("project_number",      "Project Number",           ""),
+        ("project_description", "Project Description",      ""),
+        ("software_version",    "Software Version",         ""),
+        ("controller_name",     "Controller Name",          ""),
     ]
 
     def __init__(self, parent):
         self._vars: dict[str, tk.StringVar] = {}
+        self._nc_rows: list[tuple[tk.StringVar, tk.IntVar]] = []
         super().__init__(parent, "New Project Workbook")
 
     def _build(self):
@@ -512,15 +501,42 @@ class InitDialog(_BaseDialog):
         outer.pack(fill="both")
         fields = ttk.Frame(outer)
         fields.pack(fill="x")
+
         for i, (key, label, default) in enumerate(self._FIELDS):
-            ttk.Label(fields, text=label + ":").grid(row=i, column=0, sticky="nw", pady=3, padx=(0, 8))
-            if key == "io_network_cards":
-                self._cards_text = tk.Text(fields, width=36, height=4, font=("TkDefaultFont",))
-                self._cards_text.grid(row=i, column=1, pady=3)
-            else:
-                var = tk.StringVar(value=default)
-                self._vars[key] = var
-                ttk.Entry(fields, textvariable=var, width=36).grid(row=i, column=1, pady=3)
+            ttk.Label(fields, text=label + ":").grid(row=i, column=0, sticky="w", pady=3, padx=(0, 8))
+            var = tk.StringVar(value=default)
+            self._vars[key] = var
+            ttk.Entry(fields, textvariable=var, width=36).grid(row=i, column=1, pady=3, sticky="w")
+
+        # Network Cards section
+        nc_row = len(self._FIELDS)
+        ttk.Label(fields, text="IO Network Cards:").grid(
+            row=nc_row, column=0, sticky="nw", pady=(6, 3), padx=(0, 8))
+
+        nc_outer = ttk.Frame(fields)
+        nc_outer.grid(row=nc_row, column=1, pady=(6, 3), sticky="w")
+
+        nc_frame = ttk.Frame(nc_outer)
+        nc_frame.pack(anchor="w")
+
+        ttk.Label(nc_frame, text="Card Name", width=22, anchor="w").grid(row=0, column=0, sticky="w")
+        ttk.Label(nc_frame, text="Slot", width=6, anchor="w").grid(row=0, column=1, padx=(6, 0), sticky="w")
+
+        def _add_nc_row(name="", slot=0):
+            r = len(self._nc_rows) + 1
+            name_var = tk.StringVar(value=name)
+            slot_var = tk.IntVar(value=slot)
+            ttk.Entry(nc_frame, textvariable=name_var, width=22).grid(
+                row=r, column=0, pady=2, sticky="w")
+            ttk.Spinbox(nc_frame, from_=0, to=17, textvariable=slot_var, width=5).grid(
+                row=r, column=1, padx=(6, 0), pady=2)
+            self._nc_rows.append((name_var, slot_var))
+
+        self._add_nc_row_fn = _add_nc_row
+        _add_nc_row()  # start with one row
+
+        ttk.Button(nc_outer, text="+ Add Card", command=_add_nc_row).pack(anchor="w", pady=(4, 0))
+
         self._add_footer(outer)
 
     def _ok(self):
@@ -528,10 +544,17 @@ class InitDialog(_BaseDialog):
         if not vals["filename"]:
             messagebox.showerror("Required", "Filename is required.", parent=self)
             return
-        raw_cards = self._cards_text.get("1.0", "end").strip()
-        io_network_cards = [c.strip() for c in raw_cards.splitlines() if c.strip()]
+        io_network_cards = []
+        for name_var, slot_var in self._nc_rows:
+            name = name_var.get().strip()
+            if name:
+                try:
+                    slot = slot_var.get()
+                except tk.TclError:
+                    slot = 0
+                io_network_cards.append(NetworkCard(name=name, slot=slot))
         if not io_network_cards:
-            messagebox.showerror("Required", "At least one IO Network Card Name is required.", parent=self)
+            messagebox.showerror("Required", "At least one IO Network Card is required.", parent=self)
             return
         vals["io_network_cards"] = io_network_cards
         self.result = vals

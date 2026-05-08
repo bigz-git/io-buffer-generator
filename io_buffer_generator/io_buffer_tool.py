@@ -19,7 +19,7 @@ from . import excel_manager
 from . import l5x_generator
 from . import cad_generator
 from .ascii_logo import image_to_ascii
-from .models import IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX
+from .models import IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX, NetworkCard
 from ._version import __version__
 
 
@@ -110,17 +110,23 @@ def cmd_init(args):
     software_version = _prompt("Software Version (e.g. 32.00)")
     controller_name  = _prompt("Controller Name")
 
-    print("\nIO Network Card Names (enter one per line; press Enter with no value when done):")
+    print("\nIO Network Cards (enter name and slot for each; press Enter with no name when done):")
     io_network_cards = []
     while True:
-        prompt_text = f"  Card {len(io_network_cards) + 1}" + (" (required)" if not io_network_cards else " (or Enter to finish)")
-        raw = input(f"{prompt_text}: ").strip()
-        if raw:
-            io_network_cards.append(raw)
-        elif io_network_cards:
-            break
-        else:
-            print("  At least one IO Network Card Name is required.")
+        card_num = len(io_network_cards) + 1
+        name_prompt = f"  Card {card_num} name" + (" (required)" if not io_network_cards else " (or Enter to finish)")
+        name = input(f"{name_prompt}: ").strip()
+        if not name:
+            if io_network_cards:
+                break
+            print("  At least one IO Network Card is required.")
+            continue
+        slot_raw = input(f"  Card {card_num} slot (0-17) [0]: ").strip()
+        try:
+            slot = int(slot_raw) if slot_raw else 0
+        except ValueError:
+            slot = 0
+        io_network_cards.append(NetworkCard(name=name, slot=slot))
 
     excel_manager.create_workbook(path, software_version, controller_name, io_network_cards,
                                   project_number, project_description)
@@ -131,19 +137,7 @@ def cmd_add_rack(args):
     path = _get_workbook_path(args.workbook)
 
     # Read available network cards from workbook
-    from openpyxl import load_workbook as lw
-    wb_tmp = lw(path, data_only=True)
-    ws_tmp = wb_tmp[excel_manager.COVER_SHEET]
-    io_network_cards = []
-    c2 = str(ws_tmp["C2"].value or "").strip()
-    if c2:
-        io_network_cards.append(c2)
-    for f_row in range(2, ws_tmp.max_row + 1):
-        val = ws_tmp.cell(row=f_row, column=6).value
-        if val is None or not str(val).strip():
-            break
-        io_network_cards.append(str(val).strip())
-    wb_tmp.close()
+    network_cards = excel_manager.read_network_cards(path)
 
     print()
     rack_name = _prompt("Rack name")
@@ -166,22 +160,22 @@ def cmd_add_rack(args):
         print("  Please enter 1, 2, or 3.")
 
     # Network card selection
-    if len(io_network_cards) == 1:
-        network_card = io_network_cards[0]
-        print(f"  Network Card: {network_card}")
-    elif io_network_cards:
+    if len(network_cards) == 1:
+        network_card = network_cards[0].name
+        print(f"  Network Card: {network_card}  (slot {network_cards[0].slot})")
+    elif network_cards:
         print("  IO Network Card:")
-        for i, card in enumerate(io_network_cards, 1):
-            print(f"    {i}. {card}")
+        for i, card in enumerate(network_cards, 1):
+            print(f"    {i}. {card.name}  (slot {card.slot})")
         while True:
             raw = input(f"  Select network card [1]: ").strip()
             if not raw:
-                network_card = io_network_cards[0]
+                network_card = network_cards[0].name
                 break
-            if raw.isdigit() and 1 <= int(raw) <= len(io_network_cards):
-                network_card = io_network_cards[int(raw) - 1]
+            if raw.isdigit() and 1 <= int(raw) <= len(network_cards):
+                network_card = network_cards[int(raw) - 1].name
                 break
-            print(f"  Please enter a number between 1 and {len(io_network_cards)}.")
+            print(f"  Please enter a number between 1 and {len(network_cards)}.")
     else:
         network_card = ""
 
@@ -582,7 +576,7 @@ def cmd_list(args):
     print(f"  Controller        : {project.controller_name}")
     for i, card in enumerate(project.io_network_cards):
         label = "IO Network Card   :" if i == 0 else "                   "
-        print(f"  {label} {card}")
+        print(f"  {label} {card.name}  (slot {card.slot})")
     print(f"\nRacks ({len(project.racks)}):")
 
     for rack in project.racks:
