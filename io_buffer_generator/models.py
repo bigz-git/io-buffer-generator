@@ -35,6 +35,7 @@ class Module:
 class Rack:
     name: str
     io_family: str = IO_FAMILY_POINT  # "1734" (Point IO) or "1794" (Flex IO)
+    network_card: str = ""            # which IO network card this rack is connected through
     modules: list = field(default_factory=list)  # list[Module]
 
 
@@ -42,7 +43,7 @@ class Rack:
 class Project:
     software_version: str
     controller_name: str
-    io_network_card: str
+    io_network_cards: list            # list[str] — first entry is the primary card
     project_number: str = ""
     project_description: str = ""
     racks: list = field(default_factory=list)  # list[Rack]

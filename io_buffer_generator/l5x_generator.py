@@ -397,7 +397,7 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
 # Main chassis routine builder (always first in IO_Module_Status program)
 # ---------------------------------------------------------------------------
 
-def _build_main_chassis_routine(io_network_card: str) -> str:
+def _build_main_chassis_routine(io_network_cards: list) -> str:
     rungs = []
 
     rung0_comment = (
@@ -408,27 +408,32 @@ def _build_main_chassis_routine(io_network_card: str) -> str:
     )
     rungs.append(_rung_xml(0, rung0_comment, "XIC(JSR_ENABLE_A000_Main_Chassis)NOP()"))
 
-    rung1_comment = (
-        f"{_SEPARATOR}\n"
-        f"Main Chassis Slot 00 EN2T Module Status Logic\n"
-        f"{_SEPARATOR}"
-    )
-    rungs.append(_rung_xml(1, rung1_comment,
-        f"GSV(Module,{io_network_card},EntryStatus,{io_network_card}._S_EntryStatus)"))
+    rung_num = 1
+    for card in io_network_cards:
+        card_comment = (
+            f"{_SEPARATOR}\n"
+            f"Main Chassis Slot 00 EN2T Module Status Logic\n"
+            f"{_SEPARATOR}"
+        )
+        rungs.append(_rung_xml(rung_num, card_comment,
+            f"GSV(Module,{card},EntryStatus,{card}._S_EntryStatus)"))
+        rung_num += 1
 
-    rungs.append(_rung_xml(2, "", (
-        f"XIO({io_network_card}._S_EntryStatus.12)"
-        f"XIO({io_network_card}._S_EntryStatus.13)"
-        f"XIC({io_network_card}._S_EntryStatus.14)"
-        f"XIO({io_network_card}._S_EntryStatus.15)"
-        f"OTE({io_network_card}._S_CommsOK)"
-    )))
+        rungs.append(_rung_xml(rung_num, "", (
+            f"XIO({card}._S_EntryStatus.12)"
+            f"XIO({card}._S_EntryStatus.13)"
+            f"XIC({card}._S_EntryStatus.14)"
+            f"XIO({card}._S_EntryStatus.15)"
+            f"OTE({card}._S_CommsOK)"
+        )))
+        rung_num += 1
 
-    rungs.append(_rung_xml(3, "", (
-        f"[XIC(PLC._P_Module_Faults_Detect) XIO({io_network_card}._S_CommsOK) ,"
-        f"XIC({io_network_card}._S_CommsFault) XIO(PLC._R_Module_Faults_Reset) ]"
-        f"OTE({io_network_card}._S_CommsFault)"
-    )))
+        rungs.append(_rung_xml(rung_num, "", (
+            f"[XIC(PLC._P_Module_Faults_Detect) XIO({card}._S_CommsOK) ,"
+            f"XIC({card}._S_CommsFault) XIO(PLC._R_Module_Faults_Reset) ]"
+            f"OTE({card}._S_CommsFault)"
+        )))
+        rung_num += 1
 
     return _routine_xml("A000_Main_Chassis", rungs)
 
@@ -653,8 +658,8 @@ def _build_standard_file(project: Project, target_name: str,
         _UDT_QP_MODULE_TAGS_v02,
         '</DataTypes>',
         '<Tags Use="Context">',
-        _tag_xml(project.io_network_card, "Standard", "QP_MODULE_TAGS_v02",
-                 f"{project.io_network_card}\nMain Enet Module", -1),
+        *[_tag_xml(card, "Standard", "QP_MODULE_TAGS_v02", f"{card}\nMain Enet Module", -1)
+          for card in project.io_network_cards],
     ]
     lines.extend(ctrl_tags)
     lines.append('</Tags>')
@@ -728,7 +733,7 @@ def generate(project: Project, output_dir: str, split_programs: bool = False) ->
     sfty_mod_status_names = []
 
     buff_routines = []
-    mod_routines = [_build_main_chassis_routine(project.io_network_card)]
+    mod_routines = [_build_main_chassis_routine(project.io_network_cards)]
     sfty_routines = []
     sfty_mod_status_routines = []
 
@@ -747,7 +752,7 @@ def generate(project: Project, output_dir: str, split_programs: bool = False) ->
     for rack in project.racks:
         mod_status_names.append(rack.name)
         mod_local_tags.append(_jsr_enable_tag(rack.name))
-        mod_routines.append(_build_mod_status_routine(rack, project.io_network_card))
+        mod_routines.append(_build_mod_status_routine(rack, rack.network_card))
 
         rack_sfty_mods = []
         for mod in rack.modules:
@@ -757,18 +762,18 @@ def generate(project: Project, output_dir: str, split_programs: bool = False) ->
             if mod.type in SAFETY_TYPES:
                 sfty_routine_names.append(mod.routine)
                 sfty_local_tags.append(_jsr_enable_tag(mod.routine, "Safety"))
-                sfty_routines.append(_build_buffer_routine(rack, mod, project.io_network_card))
+                sfty_routines.append(_build_buffer_routine(rack, mod, rack.network_card))
                 rack_sfty_mods.append(mod.routine)
             elif split_programs:
                 bucket = _split_bucket(mod.type)
                 if bucket:
                     split_routine_names[bucket].append(mod.routine)
                     split_local_tags[bucket].append(_jsr_enable_tag(mod.routine))
-                    split_routines[bucket].append(_build_buffer_routine(rack, mod, project.io_network_card))
+                    split_routines[bucket].append(_build_buffer_routine(rack, mod, rack.network_card))
             else:
                 buff_routine_names.append(mod.routine)
                 buff_local_tags.append(_jsr_enable_tag(mod.routine))
-                buff_routines.append(_build_buffer_routine(rack, mod, project.io_network_card))
+                buff_routines.append(_build_buffer_routine(rack, mod, rack.network_card))
 
         if rack_sfty_mods:
             sfty_mod_status_names.append(rack.name)

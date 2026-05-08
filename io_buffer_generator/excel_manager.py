@@ -9,8 +9,16 @@ Sheet layout:
 Cover Sheet cells:
   A2: Software Version
   B2: Controller Name
-  C2: IO Network Card Name
-  A5:A* / B5:B*: rack name / IO bit count (auto-populated)
+  C2: Primary IO Network Card Name (required)
+  D2: Project Number
+  E2: Project Description
+  F2, F3, ...: Additional IO Network Card Names (optional, read until empty)
+
+Cover Sheet rack table (rows 4+):
+  A4/A5+: Rack Name
+  B4/B5+: IO Point Count (auto-populated formula)
+  C4/C5+: IO Family
+  D4/D5+: Network Card (which IO network card this rack connects through)
 
 Rack sheet columns (1-indexed):
   A: Module Type (dropdown)
@@ -50,14 +58,15 @@ HEADER_BORDER = Border(bottom=Side(style="medium"))
 # Workbook creation
 # ---------------------------------------------------------------------------
 
-def create_workbook(path: str, software_version: str, controller_name: str, io_network_card: str,
+def create_workbook(path: str, software_version: str, controller_name: str,
+                    io_network_cards: list,
                     project_number: str = "", project_description: str = "") -> None:
     wb = Workbook()
 
     # Sheet 1 — Cover Sheet
     ws_cover = wb.active
     ws_cover.title = COVER_SHEET
-    _setup_cover_sheet(ws_cover, software_version, controller_name, io_network_card,
+    _setup_cover_sheet(ws_cover, software_version, controller_name, io_network_cards,
                        project_number, project_description)
 
     # Sheet 2 — CLI Tool Help
@@ -67,32 +76,38 @@ def create_workbook(path: str, software_version: str, controller_name: str, io_n
     wb.save(path)
 
 
-def _setup_cover_sheet(ws, software_version: str, controller_name: str, io_network_card: str,
+def _setup_cover_sheet(ws, software_version: str, controller_name: str,
+                       io_network_cards: list,
                        project_number: str = "", project_description: str = "") -> None:
     ws["A1"] = "Software Version"
     ws["B1"] = "Controller Name"
-    ws["C1"] = "IO Network Card Name"
+    ws["C1"] = "IO Network Card Names"
     ws["D1"] = "Project Number"
     ws["E1"] = "Project Description"
+    ws["F1"] = "Additional IO Network Cards (F2, F3, ...)"
 
     ws["A2"] = software_version
     ws["B2"] = controller_name
-    ws["C2"] = io_network_card
+    ws["C2"] = io_network_cards[0] if io_network_cards else ""
     ws["D2"] = project_number
     ws["E2"] = project_description
+    for i, card in enumerate(io_network_cards[1:], start=2):
+        ws.cell(row=i, column=6, value=card)  # column F
 
     ws["A4"] = "Rack Name"
     ws["B4"] = "IO Point Count"
     ws["C4"] = "IO Family"
+    ws["D4"] = "Network Card"
 
-    for cell in [ws["A4"], ws["B4"], ws["C4"]]:
+    for cell in [ws["A4"], ws["B4"], ws["C4"], ws["D4"]]:
         cell.font = Font(bold=True)
 
     ws.column_dimensions["A"].width = 25
     ws.column_dimensions["B"].width = 16
     ws.column_dimensions["C"].width = 25
-    ws.column_dimensions["D"].width = 20
+    ws.column_dimensions["D"].width = 25
     ws.column_dimensions["E"].width = 40
+    ws.column_dimensions["F"].width = 32
 
 
 def _setup_cli_help_sheet(ws) -> None:
@@ -139,10 +154,12 @@ def _setup_cli_help_sheet(ws) -> None:
 # Add rack
 # ---------------------------------------------------------------------------
 
-def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMILY_POINT) -> None:
+def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMILY_POINT,
+             network_card: str = "") -> None:
     """
     modules: list of (num_bits: int,) for each module — slot numbers auto-assigned 1..N.
     Creates a new rack sheet and updates the Cover Sheet summary.
+    network_card: which IO network card this rack connects through (must match a card in C2/F2+).
     """
     wb = load_workbook(path)
 
@@ -151,7 +168,7 @@ def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMIL
 
     ws = wb.create_sheet(rack_name)
     _write_rack_sheet(ws, modules)
-    _append_cover_summary(wb[COVER_SHEET], rack_name, io_family)
+    _append_cover_summary(wb[COVER_SHEET], rack_name, io_family, network_card)
 
     wb.save(path)
 
@@ -226,15 +243,16 @@ def _write_rack_sheet(ws, modules: list) -> None:
 
 
 
-def _append_cover_summary(ws_cover, rack_name: str, io_family: str = IO_FAMILY_POINT) -> None:
+def _append_cover_summary(ws_cover, rack_name: str, io_family: str = IO_FAMILY_POINT,
+                          network_card: str = "") -> None:
     # Find next empty row starting at row 5
     row = 5
     while ws_cover.cell(row=row, column=COL_MOD_TYPE).value is not None:
         row += 1
     ws_cover.cell(row=row, column=COL_MOD_TYPE, value=rack_name)
-    # Bit count will be filled at generate time; leave a placeholder for now
     ws_cover.cell(row=row, column=COL_SLOT, value=f"=COUNTA('{rack_name}'!E2:E5000)")
     ws_cover.cell(row=row, column=3, value=io_family)
+    ws_cover.cell(row=row, column=4, value=network_card)
 
 
 # ---------------------------------------------------------------------------
@@ -325,22 +343,32 @@ def read_project(path: str) -> Project:
 
     software_version    = str(ws_cover["A2"].value or "").strip()
     controller_name     = str(ws_cover["B2"].value or "").strip()
-    io_network_card     = str(ws_cover["C2"].value or "").strip()
+    primary_card        = str(ws_cover["C2"].value or "").strip()
     project_number      = str(ws_cover["D2"].value or "").strip()
     project_description = str(ws_cover["E2"].value or "").strip()
 
-    if not software_version or not controller_name or not io_network_card:
+    if not software_version or not controller_name or not primary_card:
         raise ValueError(
             "Cover Sheet is missing Software Version (A2), Controller Name (B2), "
             "or IO Network Card Name (C2)."
         )
 
-    # Build io_family map from cover sheet rack summary rows (A5+, C5+)
+    # Collect all network cards: C2 (required) + F2, F3, ... (optional additional cards)
+    io_network_cards = [primary_card]
+    for f_row in range(2, ws_cover.max_row + 1):
+        val = ws_cover.cell(row=f_row, column=6).value  # column F
+        if val is None or not str(val).strip():
+            break
+        io_network_cards.append(str(val).strip())
+
+    # Build io_family and network_card maps from cover sheet rack table (rows 5+)
     valid_families = {IO_FAMILY_POINT, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000}
     family_map = {}
+    network_card_map = {}
     for row in range(5, ws_cover.max_row + 1):
         rname = ws_cover.cell(row=row, column=1).value  # column A — rack name
         fam   = ws_cover.cell(row=row, column=3).value  # column C — IO family
+        nc    = ws_cover.cell(row=row, column=4).value  # column D — network card
         if rname and str(rname).strip():
             rname_str = str(rname).strip()
             if not fam or not str(fam).strip():
@@ -356,6 +384,24 @@ def read_project(path: str) -> Project:
                 )
             family_map[rname_str] = fam_str
 
+            nc_str = str(nc).strip() if nc else ""
+            if not nc_str:
+                # Backward-compatible: auto-assign the only card when there is just one
+                if len(io_network_cards) == 1:
+                    nc_str = io_network_cards[0]
+                else:
+                    raise ValueError(
+                        f"Cover Sheet row {row}: Network Card is not assigned for rack '{rname_str}'. "
+                        f"Available cards: {', '.join(io_network_cards)}."
+                    )
+            elif nc_str not in io_network_cards:
+                raise ValueError(
+                    f"Cover Sheet row {row}: Network Card '{nc_str}' for rack '{rname_str}' "
+                    f"is not in the IO Network Card list. "
+                    f"Available: {', '.join(io_network_cards)}."
+                )
+            network_card_map[rname_str] = nc_str
+
     racks = []
     for ws in wb.worksheets:
         if ws.title in (COVER_SHEET, CAD_SHEET, HELP_SHEET):
@@ -368,6 +414,7 @@ def read_project(path: str) -> Project:
                 f"({', '.join(sorted(valid_families))})."
             )
         rack.io_family = family_map[ws.title]
+        rack.network_card = network_card_map.get(ws.title, io_network_cards[0])
         if rack.modules:
             racks.append(rack)
 
@@ -398,7 +445,7 @@ def read_project(path: str) -> Project:
     return Project(
         software_version=software_version,
         controller_name=controller_name,
-        io_network_card=io_network_card,
+        io_network_cards=io_network_cards,
         project_number=project_number,
         project_description=project_description,
         racks=racks,

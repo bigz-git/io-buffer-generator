@@ -166,7 +166,7 @@ class App(tk.Tk):
                 path,
                 r["software_version"],
                 r["controller_name"],
-                r["io_network_card"],
+                r["io_network_cards"],
                 r["project_number"],
                 r["project_description"],
             )
@@ -180,15 +180,30 @@ class App(tk.Tk):
         path = self._workbook_path()
         if not path:
             return
-        dlg = AddRackDialog(self)
+        # Read available network cards from workbook
+        from openpyxl import load_workbook as lw
+        wb_tmp = lw(path, data_only=True)
+        ws_tmp = wb_tmp[COVER_SHEET]
+        io_network_cards = []
+        c2 = str(ws_tmp["C2"].value or "").strip()
+        if c2:
+            io_network_cards.append(c2)
+        for f_row in range(2, ws_tmp.max_row + 1):
+            val = ws_tmp.cell(row=f_row, column=6).value
+            if val is None or not str(val).strip():
+                break
+            io_network_cards.append(str(val).strip())
+        wb_tmp.close()
+
+        dlg = AddRackDialog(self, io_network_cards)
         self.wait_window(dlg)
         if not dlg.result:
             return
         r = dlg.result
         try:
-            excel_manager.add_rack(path, r["name"], r["channels"], r["io_family"])
+            excel_manager.add_rack(path, r["name"], r["channels"], r["io_family"], r["network_card"])
             self._log(f"Added rack '{r['name']}' — {len(r['channels'])} module(s), "
-                      f"{sum(r['channels'])} total channels.")
+                      f"{sum(r['channels'])} total channels.  Card: {r['network_card']}")
         except ValueError as e:
             messagebox.showerror("Error", str(e))
 
@@ -359,14 +374,16 @@ class App(tk.Tk):
             return
 
         self._log(f"Project: {os.path.basename(path)}")
-        self._log(f"  Software Version : {project.software_version}")
-        self._log(f"  Controller       : {project.controller_name}")
-        self._log(f"  IO Network Card  : {project.io_network_card}")
+        self._log(f"  Software Version  : {project.software_version}")
+        self._log(f"  Controller        : {project.controller_name}")
+        for i, card in enumerate(project.io_network_cards):
+            label = "IO Network Card   :" if i == 0 else "                   "
+            self._log(f"  {label} {card}")
         self._log(f"\nRacks ({len(project.racks)}):")
         for rack in project.racks:
             total_bits = sum(len(m.bits) for m in rack.modules)
             self._log(f"\n  {rack.name}  ({len(rack.modules)} module(s), {total_bits} channels)"
-                      f"  [{rack.io_family}]")
+                      f"  [{rack.io_family}]  card: {rack.network_card}")
             for mod in rack.modules:
                 routine = mod.routine or "(no routine name)"
                 self._log(f"    Slot {mod.slot:>2}  {mod.type:<20}  "
@@ -478,12 +495,12 @@ class _BaseDialog(tk.Toplevel):
 
 class InitDialog(_BaseDialog):
     _FIELDS = [
-        ("filename",            "Filename (without .xlsx)",  "project"),
-        ("project_number",      "Project Number",            ""),
-        ("project_description", "Project Description",       ""),
-        ("software_version",    "Software Version",          ""),
-        ("controller_name",     "Controller Name",           ""),
-        ("io_network_card",     "IO Network Card Name",      ""),
+        ("filename",            "Filename (without .xlsx)",          "project"),
+        ("project_number",      "Project Number",                    ""),
+        ("project_description", "Project Description",               ""),
+        ("software_version",    "Software Version",                  ""),
+        ("controller_name",     "Controller Name",                   ""),
+        ("io_network_cards",    "IO Network Card Names\n(one per line)", ""),
     ]
 
     def __init__(self, parent):
@@ -496,10 +513,14 @@ class InitDialog(_BaseDialog):
         fields = ttk.Frame(outer)
         fields.pack(fill="x")
         for i, (key, label, default) in enumerate(self._FIELDS):
-            ttk.Label(fields, text=label + ":").grid(row=i, column=0, sticky="w", pady=3, padx=(0, 8))
-            var = tk.StringVar(value=default)
-            self._vars[key] = var
-            ttk.Entry(fields, textvariable=var, width=36).grid(row=i, column=1, pady=3)
+            ttk.Label(fields, text=label + ":").grid(row=i, column=0, sticky="nw", pady=3, padx=(0, 8))
+            if key == "io_network_cards":
+                self._cards_text = tk.Text(fields, width=36, height=4, font=("TkDefaultFont",))
+                self._cards_text.grid(row=i, column=1, pady=3)
+            else:
+                var = tk.StringVar(value=default)
+                self._vars[key] = var
+                ttk.Entry(fields, textvariable=var, width=36).grid(row=i, column=1, pady=3)
         self._add_footer(outer)
 
     def _ok(self):
@@ -507,6 +528,12 @@ class InitDialog(_BaseDialog):
         if not vals["filename"]:
             messagebox.showerror("Required", "Filename is required.", parent=self)
             return
+        raw_cards = self._cards_text.get("1.0", "end").strip()
+        io_network_cards = [c.strip() for c in raw_cards.splitlines() if c.strip()]
+        if not io_network_cards:
+            messagebox.showerror("Required", "At least one IO Network Card Name is required.", parent=self)
+            return
+        vals["io_network_cards"] = io_network_cards
         self.result = vals
         self.destroy()
 
@@ -565,7 +592,8 @@ class _RackModuleBase(_BaseDialog):
 
 
 class AddRackDialog(_RackModuleBase):
-    def __init__(self, parent):
+    def __init__(self, parent, io_network_cards: list):
+        self._io_network_cards = io_network_cards
         super().__init__(parent, "Add Rack")
 
     def _build(self):
@@ -593,10 +621,16 @@ class AddRackDialog(_RackModuleBase):
             ttk.Radiobutton(fam_frame, text=label, variable=self._family_var,
                             value=val).pack(anchor="w")
 
-        ttk.Label(top, text="Number of modules:").grid(row=2, column=0, sticky="w", pady=3)
+        ttk.Label(top, text="Network Card:").grid(row=2, column=0, sticky="w", pady=3)
+        self._card_var = tk.StringVar(value=self._io_network_cards[0] if self._io_network_cards else "")
+        ttk.Combobox(top, textvariable=self._card_var,
+                     values=self._io_network_cards, state="readonly", width=30).grid(
+            row=2, column=1, padx=8, pady=3, sticky="w")
+
+        ttk.Label(top, text="Number of modules:").grid(row=3, column=0, sticky="w", pady=3)
         self._num_var = tk.StringVar(value="1")
         ttk.Spinbox(top, from_=1, to=64, textvariable=self._num_var, width=7,
-                    command=self._on_num_change).grid(row=2, column=1, sticky="w", padx=8, pady=3)
+                    command=self._on_num_change).grid(row=3, column=1, sticky="w", padx=8, pady=3)
         self._num_var.trace_add("write", lambda *_: self.after_idle(self._on_num_change))
 
         ttk.Separator(outer, orient="horizontal").pack(fill="x", pady=6)
@@ -619,7 +653,12 @@ class AddRackDialog(_RackModuleBase):
         channels = self._collect_channels()
         if channels is None:
             return
-        self.result = {"name": name, "io_family": self._family_var.get(), "channels": channels}
+        self.result = {
+            "name": name,
+            "io_family": self._family_var.get(),
+            "network_card": self._card_var.get(),
+            "channels": channels,
+        }
         self.destroy()
 
 
