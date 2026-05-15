@@ -14,7 +14,8 @@ from PIL import Image, ImageTk
 
 from . import excel_manager
 from . import l5x_generator
-from .models import IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_FLEX5000, IO_FAMILY_POINT, NetworkCard
+from .models import (ALL_MODULE_TYPES, IO_FAMILY_CLX, IO_FAMILY_FLEX, IO_FAMILY_FLEX5000,
+                      IO_FAMILY_POINT, NetworkCard)
 from ._version import __version__
 
 COVER_SHEET = excel_manager.COVER_SHEET
@@ -206,8 +207,9 @@ class App(tk.Tk):
         r = dlg.result
         try:
             excel_manager.add_rack(path, r["name"], r["channels"], r["io_family"], r["network_card"])
+            total_ch = sum(m["bits"] for m in r["channels"])
             self._log(f"Added rack '{r['name']}' — {len(r['channels'])} module(s), "
-                      f"{sum(r['channels'])} total channels.  Card: {r['network_card']}")
+                      f"{total_ch} total channels.  Card: {r['network_card']}")
         except ValueError as e:
             messagebox.showerror("Error", str(e))
 
@@ -580,7 +582,7 @@ class _RackModuleBase(_BaseDialog):
     """Shared base for Add Rack and Add Module — both need a dynamic channel list."""
 
     def __init__(self, parent, title: str):
-        self._channel_vars: list[tk.IntVar] = []
+        self._slot_vars: list[tuple] = []  # (IntVar bits, StringVar module_type, StringVar routine_name)
         super().__init__(parent, title)
         self.resizable(False, True)
 
@@ -590,7 +592,7 @@ class _RackModuleBase(_BaseDialog):
         container = ttk.Frame(parent)
         container.pack(fill="both", expand=True)
 
-        canvas = tk.Canvas(container, height=160, width=260, highlightthickness=0)
+        canvas = tk.Canvas(container, height=160, width=560, highlightthickness=0)
         sb = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=sb.set)
         self._ch_inner = ttk.Frame(canvas)
@@ -607,26 +609,45 @@ class _RackModuleBase(_BaseDialog):
     def _rebuild_channels(self, n: int):
         for w in self._ch_inner.winfo_children():
             w.destroy()
-        self._channel_vars = []
+        self._slot_vars = []
         n = max(1, min(n, 64))
+
+        ttk.Label(self._ch_inner, text="Channels",    font=("TkDefaultFont", 9, "bold")).grid(row=0, column=1, padx=8,  pady=(0, 4))
+        ttk.Label(self._ch_inner, text="Module Type", font=("TkDefaultFont", 9, "bold")).grid(row=0, column=2, padx=8,  pady=(0, 4))
+        ttk.Label(self._ch_inner, text="Routine Name",font=("TkDefaultFont", 9, "bold")).grid(row=0, column=3, padx=(8, 0), pady=(0, 4))
+
         for i in range(n):
             ttk.Label(self._ch_inner, text=f"  {self._slot_label} {i + 1}:").grid(
-                row=i, column=0, sticky="w", pady=1)
-            var = tk.IntVar(value=16)
-            ttk.Spinbox(self._ch_inner, from_=1, to=512, textvariable=var, width=7).grid(
-                row=i, column=1, padx=8, pady=1)
-            self._channel_vars.append(var)
+                row=i + 1, column=0, sticky="w", pady=1)
 
-    def _collect_channels(self) -> list[int] | None:
+            bits_var = tk.IntVar(value=16)
+            ttk.Spinbox(self._ch_inner, from_=1, to=512, textvariable=bits_var, width=7).grid(
+                row=i + 1, column=1, padx=8, pady=1)
+
+            type_var = tk.StringVar()
+            ttk.Combobox(self._ch_inner, textvariable=type_var,
+                         values=ALL_MODULE_TYPES, state="readonly", width=18).grid(
+                row=i + 1, column=2, padx=8, pady=1)
+
+            name_var = tk.StringVar()
+            ttk.Entry(self._ch_inner, textvariable=name_var, width=22).grid(
+                row=i + 1, column=3, padx=(8, 0), pady=1)
+
+            self._slot_vars.append((bits_var, type_var, name_var))
+
+    def _collect_channels(self) -> list[dict] | None:
         try:
-            ch = [v.get() for v in self._channel_vars]
+            result = [
+                {"bits": bv.get(), "module_type": tv.get(), "routine_name": nv.get().strip()}
+                for bv, tv, nv in self._slot_vars
+            ]
         except tk.TclError:
             messagebox.showerror("Invalid", "Channel counts must be whole numbers.", parent=self)
             return None
-        if any(c < 1 for c in ch):
+        if any(m["bits"] < 1 for m in result):
             messagebox.showerror("Invalid", "Channel counts must be at least 1.", parent=self)
             return None
-        return ch
+        return result
 
 
 class AddRackDialog(_RackModuleBase):

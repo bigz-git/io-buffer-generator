@@ -190,7 +190,7 @@ def _setup_cli_help_sheet(ws) -> None:
 def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMILY_POINT,
              network_card: str = "") -> None:
     """
-    modules: list of (num_bits: int,) for each module — slot numbers auto-assigned 1..N.
+    modules: list of int or list of dict {bits, module_type, routine_name} — slot numbers auto-assigned 1..N.
     Creates a new rack sheet and updates the Cover Sheet summary.
     network_card: which IO network card this rack connects through (must match a card in the Network Cards sheet).
     """
@@ -206,8 +206,23 @@ def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMIL
     wb.save(path)
 
 
+def _normalize_modules(modules: list) -> list[dict]:
+    """Accept list[int] (CLI) or list[dict] (GUI) and return uniform list[dict]."""
+    result = []
+    for m in modules:
+        if isinstance(m, int):
+            result.append({"bits": m, "module_type": "", "routine_name": ""})
+        else:
+            result.append({
+                "bits": m.get("bits", 16),
+                "module_type": m.get("module_type", ""),
+                "routine_name": m.get("routine_name", ""),
+            })
+    return result
+
+
 def _write_rack_sheet(ws, modules: list) -> None:
-    """modules: list of int (point counts per slot, in slot order)."""
+    """modules: list of int or list of dict {bits, module_type, routine_name}."""
     headers = ["Module Type", "Module Slot Number", "PLC Routine Name",
                "I/O Point", "I/O Buffer Tag Name", "I/O Buffer Tag Description"]
     col_widths = [25, 25, 25, 10, 20, 40]
@@ -227,7 +242,8 @@ def _write_rack_sheet(ws, modules: list) -> None:
     ws.add_data_validation(dv)
 
     current_row = 2
-    for slot, num_bits in enumerate(modules, start=1):
+    for slot, mod in enumerate(_normalize_modules(modules), start=1):
+        num_bits = mod["bits"]
         start_row = current_row
         end_row = current_row + num_bits - 1
 
@@ -239,8 +255,13 @@ def _write_rack_sheet(ws, modules: list) -> None:
         # Slot number (merged across all bit rows)
         ws.cell(row=start_row, column=COL_SLOT, value=slot)
 
-        # Routine name placeholder (merged)
-        ws.cell(row=start_row, column=COL_ROUTINE, value="ENTER ROUTINE NAME HERE")
+        # Module type (blank if not provided)
+        if mod["module_type"]:
+            ws.cell(row=start_row, column=COL_MOD_TYPE, value=mod["module_type"])
+
+        # Routine name (blank if not provided, no placeholder)
+        if mod["routine_name"]:
+            ws.cell(row=start_row, column=COL_ROUTINE, value=mod["routine_name"])
 
         # Apply dropdown validation to module type cell (top of merge)
         dv.add(ws.cell(row=start_row, column=COL_MOD_TYPE))
@@ -355,8 +376,8 @@ def add_network_card(path: str, card: NetworkCard) -> None:
 
 def add_modules_to_rack(path: str, rack_name: str, new_modules: list) -> None:
     """
-    new_modules: list of int (point/channel counts), appended after existing modules.
-    Removes the 'End' sentinel, appends new module rows, re-adds sentinel.
+    new_modules: list of int or list of dict {bits, module_type, routine_name}.
+    Appended after existing modules. Removes the 'End' sentinel, appends rows, re-adds sentinel.
     """
     wb = load_workbook(path)
     if rack_name not in wb.sheetnames:
@@ -390,8 +411,9 @@ def add_modules_to_rack(path: str, rack_name: str, new_modules: list) -> None:
     ws.add_data_validation(dv)
 
     current_row = end_row
-    for i, num_bits in enumerate(new_modules):
+    for i, mod in enumerate(_normalize_modules(new_modules)):
         slot = next_slot + i
+        num_bits = mod["bits"]
         start_row = current_row
         end_row_mod = current_row + num_bits - 1
 
@@ -399,7 +421,10 @@ def add_modules_to_rack(path: str, rack_name: str, new_modules: list) -> None:
             ws.cell(row=current_row + bit_idx, column=COL_BIT, value=bit_idx)
 
         ws.cell(row=start_row, column=COL_SLOT, value=slot)
-        ws.cell(row=start_row, column=COL_ROUTINE, value="ENTER ROUTINE NAME HERE")
+        if mod["module_type"]:
+            ws.cell(row=start_row, column=COL_MOD_TYPE, value=mod["module_type"])
+        if mod["routine_name"]:
+            ws.cell(row=start_row, column=COL_ROUTINE, value=mod["routine_name"])
         dv.add(ws.cell(row=start_row, column=COL_MOD_TYPE))
 
         if num_bits > 1:
