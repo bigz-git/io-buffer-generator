@@ -321,11 +321,16 @@ def add_network_card(path: str, card: NetworkCard) -> None:
             "This workbook may have been created with an older version of the tool."
         )
     ws = wb[NETWORK_CARDS_SHEET]
-    # Duplicate name check
+    # Duplicate name and slot checks
     for row in range(2, ws.max_row + 1):
-        val = ws.cell(row=row, column=1).value
-        if val and str(val).strip() == card.name:
+        name_val = ws.cell(row=row, column=1).value
+        slot_val = ws.cell(row=row, column=2).value
+        if name_val and str(name_val).strip() == card.name:
             raise ValueError(f"Network Card '{card.name}' already exists.")
+        existing_slot = int(slot_val) if isinstance(slot_val, (int, float)) and not isinstance(slot_val, bool) else None
+        if existing_slot is not None and existing_slot == card.slot:
+            existing_name = str(name_val).strip() if name_val else "?"
+            raise ValueError(f"Slot {card.slot} is already assigned to network card '{existing_name}'.")
     # Find next empty row and append
     row = 2
     while ws.cell(row=row, column=1).value is not None:
