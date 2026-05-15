@@ -708,14 +708,18 @@ class AddNetworkCardDialog(_BaseDialog):
         f = ttk.Frame(self, padding=14)
         f.pack(fill="both")
 
-        ttk.Label(f, text="Card name:").grid(row=0, column=0, sticky="w", pady=3, padx=(0, 8))
+        row1 = ttk.Frame(f)
+        row1.pack(fill="x", pady=3)
+        ttk.Label(row1, text="Card name:", width=12, anchor="w").pack(side="left")
         self._name_var = tk.StringVar()
-        ttk.Entry(f, textvariable=self._name_var, width=28).grid(row=0, column=1, pady=3, sticky="w")
+        ttk.Entry(row1, textvariable=self._name_var, width=28).pack(side="left", padx=(8, 0))
 
-        ttk.Label(f, text="Slot (0-17):").grid(row=1, column=0, sticky="w", pady=3, padx=(0, 8))
+        row2 = ttk.Frame(f)
+        row2.pack(fill="x", pady=3)
+        ttk.Label(row2, text="Slot (0-17):", width=12, anchor="w").pack(side="left")
         self._slot_var = tk.IntVar(value=0)
-        ttk.Spinbox(f, from_=0, to=17, textvariable=self._slot_var, width=7).grid(
-            row=1, column=1, pady=3, sticky="w")
+        ttk.Spinbox(row2, from_=0, to=17, textvariable=self._slot_var, width=7).pack(
+            side="left", padx=(8, 0))
 
         self._add_footer(f)
 
