@@ -133,6 +133,23 @@ def cmd_init(args):
     print(f"\nCreated: {filename}")
 
 
+def cmd_add_network_card(args):
+    path = _get_workbook_path(args.workbook)
+    print()
+    name = _prompt("Card name")
+    slot_raw = input("Slot (0-17) [0]: ").strip()
+    try:
+        slot = int(slot_raw) if slot_raw else 0
+    except ValueError:
+        slot = 0
+    try:
+        excel_manager.add_network_card(path, NetworkCard(name=name, slot=slot))
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+    print(f"\nAdded network card '{name}' at slot {slot}.")
+
+
 def cmd_add_rack(args):
     path = _get_workbook_path(args.workbook)
 
@@ -603,9 +620,10 @@ def main():
     sub = parser.add_subparsers(dest="command", metavar="command")
     sub.required = True
 
-    sub.add_parser("validate",    help="Check workbook for errors and warnings without generating files")
-    sub.add_parser("init",       help="Create a new project workbook")
-    sub.add_parser("add-rack",    help="Add a rack to the workbook")
+    sub.add_parser("validate",          help="Check workbook for errors and warnings without generating files")
+    sub.add_parser("init",              help="Create a new project workbook")
+    sub.add_parser("add-network-card",  help="Add an IO network card to the workbook")
+    sub.add_parser("add-rack",          help="Add a rack to the workbook")
     sub.add_parser("rename-rack", help="Rename an existing rack")
     sub.add_parser("remove-rack", help="Remove a rack sheet and its Cover Sheet entry")
     sub.add_parser("add-module",  help="Add modules to an existing rack")
@@ -633,6 +651,7 @@ def main():
     commands = {
         "validate":          cmd_validate,
         "init":              cmd_init,
+        "add-network-card":  cmd_add_network_card,
         "add-rack":          cmd_add_rack,
         "rename-rack":       cmd_rename_rack,
         "remove-rack":       cmd_remove_rack,

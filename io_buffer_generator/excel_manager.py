@@ -129,6 +129,7 @@ def _setup_network_cards_sheet(ws, io_network_cards: list) -> None:
 def _setup_cli_help_sheet(ws) -> None:
     CLI_COMMANDS = [
         ("init",               "Create a new project workbook."),
+        ("add-network-card",   "Add an IO network card to the workbook."),
         ("add-rack",           "Add a rack to the workbook."),
         ("rename-rack",        "Rename an existing rack."),
         ("remove-rack",        "Remove a rack sheet and its Cover Sheet entry."),
@@ -309,6 +310,29 @@ def read_network_cards(path: str) -> list:
     cards = _read_network_cards(wb)
     wb.close()
     return cards
+
+
+def add_network_card(path: str, card: NetworkCard) -> None:
+    """Append a NetworkCard to the 'Network Cards' sheet."""
+    wb = load_workbook(path)
+    if NETWORK_CARDS_SHEET not in wb.sheetnames:
+        raise ValueError(
+            f"'{NETWORK_CARDS_SHEET}' sheet not found. "
+            "This workbook may have been created with an older version of the tool."
+        )
+    ws = wb[NETWORK_CARDS_SHEET]
+    # Duplicate name check
+    for row in range(2, ws.max_row + 1):
+        val = ws.cell(row=row, column=1).value
+        if val and str(val).strip() == card.name:
+            raise ValueError(f"Network Card '{card.name}' already exists.")
+    # Find next empty row and append
+    row = 2
+    while ws.cell(row=row, column=1).value is not None:
+        row += 1
+    ws.cell(row=row, column=1, value=card.name)
+    ws.cell(row=row, column=2, value=card.slot)
+    wb.save(path)
 
 
 # ---------------------------------------------------------------------------

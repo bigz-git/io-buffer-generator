@@ -78,10 +78,11 @@ class App(tk.Tk):
             ttk.Button(btn_col, text=text, width=20, command=cmd).pack(fill="x", pady=1)
 
         section("Setup")
-        btn("Add Rack",    self.cmd_add_rack)
-        btn("Add Module",  self.cmd_add_module)
-        btn("Rename Rack", self.cmd_rename_rack)
-        btn("Remove Rack", self.cmd_remove_rack)
+        btn("Add Network Card", self.cmd_add_network_card)
+        btn("Add Rack",         self.cmd_add_rack)
+        btn("Add Module",       self.cmd_add_module)
+        btn("Rename Rack",      self.cmd_rename_rack)
+        btn("Remove Rack",      self.cmd_remove_rack)
 
         section("Populate")
         btn("Fill Tags",         self.cmd_fill_tags)
@@ -175,6 +176,20 @@ class App(tk.Tk):
             self._log_clear()
             self._log(f"Created: {filename}")
         except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    def cmd_add_network_card(self):
+        path = self._workbook_path()
+        if not path:
+            return
+        dlg = AddNetworkCardDialog(self)
+        self.wait_window(dlg)
+        if not dlg.result:
+            return
+        try:
+            excel_manager.add_network_card(path, dlg.result)
+            self._log(f"Added network card '{dlg.result.name}' at slot {dlg.result.slot}.")
+        except ValueError as e:
             messagebox.showerror("Error", str(e))
 
     def cmd_add_rack(self):
@@ -682,6 +697,38 @@ class AddRackDialog(_RackModuleBase):
             "network_card": self._card_var.get(),
             "channels": channels,
         }
+        self.destroy()
+
+
+class AddNetworkCardDialog(_BaseDialog):
+    def __init__(self, parent):
+        super().__init__(parent, "Add Network Card")
+
+    def _build(self):
+        f = ttk.Frame(self, padding=14)
+        f.pack(fill="both")
+
+        ttk.Label(f, text="Card name:").grid(row=0, column=0, sticky="w", pady=3, padx=(0, 8))
+        self._name_var = tk.StringVar()
+        ttk.Entry(f, textvariable=self._name_var, width=28).grid(row=0, column=1, pady=3, sticky="w")
+
+        ttk.Label(f, text="Slot (0-17):").grid(row=1, column=0, sticky="w", pady=3, padx=(0, 8))
+        self._slot_var = tk.IntVar(value=0)
+        ttk.Spinbox(f, from_=0, to=17, textvariable=self._slot_var, width=7).grid(
+            row=1, column=1, pady=3, sticky="w")
+
+        self._add_footer(f)
+
+    def _ok(self):
+        name = self._name_var.get().strip()
+        if not name:
+            messagebox.showerror("Required", "Card name is required.", parent=self)
+            return
+        try:
+            slot = self._slot_var.get()
+        except tk.TclError:
+            slot = 0
+        self.result = NetworkCard(name=name, slot=slot)
         self.destroy()
 
 
