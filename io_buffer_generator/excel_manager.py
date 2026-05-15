@@ -67,6 +67,7 @@ HEADER_BORDER = Border(bottom=Side(style="medium"))
 def create_workbook(path: str, software_version: str, controller_name: str,
                     io_network_cards: list,
                     project_number: str = "", project_description: str = "") -> None:
+    _validate_network_cards(io_network_cards)
     wb = Workbook()
 
     # Sheet 1 — Cover Sheet
@@ -111,6 +112,21 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str,
     ws.column_dimensions["C"].width = 25
     ws.column_dimensions["D"].width = 25
     ws.column_dimensions["E"].width = 40
+
+
+def _validate_network_cards(io_network_cards: list) -> None:
+    """Raise ValueError if any card name or slot number is duplicated."""
+    seen_names = {}
+    seen_slots = {}
+    for card in io_network_cards:
+        if card.name in seen_names:
+            raise ValueError(f"Duplicate network card name '{card.name}'.")
+        if card.slot in seen_slots:
+            raise ValueError(
+                f"Slot {card.slot} is assigned to both '{seen_slots[card.slot]}' and '{card.name}'."
+            )
+        seen_names[card.name] = True
+        seen_slots[card.slot] = card.name
 
 
 def _setup_network_cards_sheet(ws, io_network_cards: list) -> None:
@@ -321,16 +337,9 @@ def add_network_card(path: str, card: NetworkCard) -> None:
             "This workbook may have been created with an older version of the tool."
         )
     ws = wb[NETWORK_CARDS_SHEET]
-    # Duplicate name and slot checks
-    for row in range(2, ws.max_row + 1):
-        name_val = ws.cell(row=row, column=1).value
-        slot_val = ws.cell(row=row, column=2).value
-        if name_val and str(name_val).strip() == card.name:
-            raise ValueError(f"Network Card '{card.name}' already exists.")
-        existing_slot = int(slot_val) if isinstance(slot_val, (int, float)) and not isinstance(slot_val, bool) else None
-        if existing_slot is not None and existing_slot == card.slot:
-            existing_name = str(name_val).strip() if name_val else "?"
-            raise ValueError(f"Slot {card.slot} is already assigned to network card '{existing_name}'.")
+    # Build current card list and validate against the new entry
+    existing = _read_network_cards(wb)
+    _validate_network_cards(existing + [card])
     # Find next empty row and append
     row = 2
     while ws.cell(row=row, column=1).value is not None:
