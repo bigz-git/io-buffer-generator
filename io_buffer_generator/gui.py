@@ -588,7 +588,6 @@ class _RackModuleBase(_BaseDialog):
 
     def _build_channel_area(self, parent, slot_label: str = "Slot") -> ttk.Frame:
         """Build the scrollable channel-count section. Returns the inner frame."""
-        ttk.Label(parent, text="Channels per module:").pack(anchor="w", pady=(4, 2))
         container = ttk.Frame(parent)
         container.pack(fill="both", expand=True)
 
