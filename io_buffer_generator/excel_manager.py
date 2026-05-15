@@ -450,6 +450,7 @@ def read_project(path: str) -> Project:
         raise ValueError(
             "No IO Network Cards found. Add cards to the 'Network Cards' sheet."
         )
+    _validate_network_cards(io_network_cards)
     card_names = [c.name for c in io_network_cards]
 
     # Build io_family and network_card maps from cover sheet rack table (rows 5+)
