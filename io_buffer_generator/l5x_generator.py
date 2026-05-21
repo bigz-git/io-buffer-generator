@@ -289,13 +289,13 @@ def _buff_routine_comment(is_safety: bool = False) -> str:
     if is_safety:
         comment = (
             f"{_SEPARATOR}\n"
-            f"Safety IO Buffer Status Subroutine\n"
+            f"Safety IO Buffer Subroutine\n"
             f"{_SEPARATOR}\n"
         )
     else:
         comment = (
             f"{_SEPARATOR}\n"
-            f"IO Buffer Status Subroutine\n"
+            f"IO Buffer Subroutine\n"
             f"{_SEPARATOR}\n"
             f"This routine has an internal toggle bit to enable or disable the routines JSR instruction in the Subroutine Calls routine.\n"
             f"This bit is intended for commissioning and maintenance functions and must be high for normal line operations.\n"
@@ -305,18 +305,6 @@ def _buff_routine_comment(is_safety: bool = False) -> str:
             f"{_SEPARATOR}"
         )
 
-    # title = "Safety IO Buffer Status Subroutine" if is_safety else "IO Buffer Status Subroutine"
-    # return (
-    #     f"{_SEPARATOR}\n"
-    #     f"{title}\n"
-    #     f"{_SEPARATOR}\n"
-    #     f"This routine has an internal toggle bit to enable or disable the routines JSR instruction in the Subroutine Calls routine.\n"
-    #     f"This bit is intended for commissioning and maintenance functions and must be high for normal line operations.\n"
-    #     f"{_SEPARATOR}\n"
-    #     f"Module Fault Detect Logic -- Master Control Relay\n"
-    #     f"<<  When the MCR is disabled, the rung-condition-in is false for all the instructions inside this subroutine >>\n"
-    #     f"{_SEPARATOR}"
-    # )
     return comment
     
 
@@ -333,7 +321,7 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
     # MCR opening rung — safety routines use a simplified form (fault conditions
     # live in the safety controller, not exposed here)
     if mod.type in SAFETY_TYPES:
-        mcr_ladder = f"XIC(JSR_ENABLE_{mod.routine})MCR()"
+        mcr_ladder = f"NOP()"
     else:
         mcr_ladder = (
             f"XIC(JSR_ENABLE_{mod.routine})"
@@ -619,11 +607,14 @@ def _build_safety_mod_status_routine(rack: Rack) -> str:
 # Subroutine calls routine builder
 # ---------------------------------------------------------------------------
 
-def _build_calls_routine(routine_names: list) -> str:
+def _build_calls_routine(routine_names: list, use_jsr_enable: bool = True) -> str:
     """Build the Subroutine_Calls routine with JSR rungs for each name."""
     rungs = [_rung_xml(0, "", "NOP()")]
     for i, name in enumerate(routine_names, start=1):
-        rungs.append(_rung_xml(i, "", f"XIC(JSR_ENABLE_{name})JSR({name},0)"))
+        if use_jsr_enable:
+            rungs.append(_rung_xml(i, "", f"XIC(JSR_ENABLE_{name})JSR({name},0)"))
+        else:
+            rungs.append(_rung_xml(i, "", f"JSR({name},0)"))
     return _routine_xml("Subroutine_Calls", rungs)
 
 
@@ -902,7 +893,7 @@ def generate(project: Project, output_dir: str, split_programs: bool = False) ->
         s_lines.extend(sfty_local_tags)
         s_lines.append('</Tags>')
         s_lines.append('<Routines>')
-        s_lines.append(_build_calls_routine(sfty_routine_names))
+        s_lines.append(_build_calls_routine(sfty_routine_names, use_jsr_enable=False))
         s_lines.extend(sfty_routines)
         s_lines.append('</Routines>')
         s_lines.append('</Program>')
