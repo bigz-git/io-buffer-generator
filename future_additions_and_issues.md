@@ -16,9 +16,10 @@
     - need to add main rack config to tool. add new excel sheet for this, or add to coversheet.
 - update Flex 5000 module status routines with Bobs program format*
     - will need to add special flex5000 udt that bob made
+-fix instruction conflicts with v37 and up (assuming v38 has same issue). NEQ -> NE, EQU -> EQ, etc.
 
 
-- fix safety buffer routine (remove JSR enable bits and update with safety UDT tag)
+
 
 *the stared options above (other places might be affected too) are going to run into conflicts with different UDT structures being used. need to add a way to show which udt structures are being used, and print out the members of those structures
 
@@ -43,6 +44,7 @@
 - add version number - DONE
 - package into wheel for distribution - DONE
 - add option to seperate IO buffer into 4 different programs (Digital_Input_Buffer, Analog_Input_Buffer, Digital_Output_Buffer, Analog_Output_Buffer) - DONE
+- fix safety buffer routine (remove JSR enable bits and update with safety UDT tag) - DONE
 
 # in process/ needs testing
 - cad files 

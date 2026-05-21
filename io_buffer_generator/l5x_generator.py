@@ -465,9 +465,28 @@ def _mod_status_comment() -> str:
     )
 
 
-def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
+# Instruction names that changed in Studio 5000 v37. Add future renames here.
+_V37_RENAMES = {
+    "NEQ": "NE",
+    "EQU": "EQ",
+}
+
+
+def _instr(name: str, software_version: str) -> str:
+    """Return the correct instruction mnemonic for the given software version string."""
+    try:
+        major = int(software_version.split(".")[0])
+    except (ValueError, IndexError):
+        major = 0
+    if major >= 37:
+        return _V37_RENAMES.get(name, name)
+    return name
+
+
+def _build_mod_status_routine(rack: Rack, io_card: str, software_version: str = "36.00") -> str:
     rungs = []
     rung_num = 0
+    neq = _instr("NEQ", software_version)
 
     # MCR opening rung
     mcr_ladder = (
@@ -481,7 +500,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
     # Communication module fault rung
     aent_comment = f"Module Fault Detect Logic\nCommunication Module"
     aent_ladder = (
-        f"[XIO({io_card}._S_Fault) GSV(Module,{rack.name},FaultCode,{rack.name}._S_FaultCode) NEQ({rack.name}._S_FaultCode,0) ,\n"
+        f"[XIO({io_card}._S_Fault) GSV(Module,{rack.name},FaultCode,{rack.name}._S_FaultCode) {neq}({rack.name}._S_FaultCode,0) ,\n"
         f"XIC({rack.name}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
         f"OTE({rack.name}._S_Fault)"
     )
@@ -513,7 +532,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
                 )
             else:
                 ladder = (
-                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) NEQ({mod.routine}._S_FaultCode,0) ,\n"
+                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
                     f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}_S_Fault)"
                 )
@@ -526,7 +545,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
                 )
             else:
                 ladder = (
-                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) NEQ({mod.routine}._S_FaultCode,0) ,\n"
+                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
                     f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}_S_Fault)"
                 )
@@ -539,7 +558,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
                 )
             else:
                 ladder = (
-                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) NEQ({mod.routine}._S_FaultCode,0) ,\n"
+                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
                     f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}_S_Fault)"
                 )
@@ -552,7 +571,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str) -> str:
                 )
             else:
                 ladder = (
-                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) NEQ({mod.routine}._S_FaultCode,0) ,\n"
+                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
                     f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}_S_Fault)"
                 )
@@ -758,7 +777,7 @@ def generate(project: Project, output_dir: str, split_programs: bool = False) ->
     for rack in project.racks:
         mod_status_names.append(rack.name)
         mod_local_tags.append(_jsr_enable_tag(rack.name))
-        mod_routines.append(_build_mod_status_routine(rack, rack.network_card))
+        mod_routines.append(_build_mod_status_routine(rack, rack.network_card, project.software_version))
 
         rack_sfty_mods = []
         for mod in rack.modules:
