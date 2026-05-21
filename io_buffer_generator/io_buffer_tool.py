@@ -568,7 +568,7 @@ def cmd_list_udts(args):
             print("Available UDTs: " + ", ".join(u["name"] for u in l5x_generator.list_udts()))
             sys.exit(1)
 
-    print("UDTs being used in this tool include:")
+    print(f"UDTs being used in IO Buffer Generator v{__version__}:")
     for udt in udts:
         members = udt["members"]
         print(f"\n{udt['name']}  ({len(members)} members)")
