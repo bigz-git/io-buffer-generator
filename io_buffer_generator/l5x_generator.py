@@ -579,7 +579,7 @@ def _build_safety_mod_status_routine(rack: Rack) -> str:
         f"{_SEPARATOR}\n"
     )
 
-    mcr_ladder = f"XIC(Safety_PLC_Run_TMR.DN)MCR()"
+    mcr_ladder = f"XIC(SAFETY._Run_TMR.DN)MCR()"
     rungs.append(_rung_xml(rung_num, comment, mcr_ladder))
     rung_num += 1
 
@@ -588,7 +588,7 @@ def _build_safety_mod_status_routine(rack: Rack) -> str:
             continue
         ladder = (
             f"[XIC({rack.name}:{mod.slot}:I.ConnectionFaulted) ,"
-            f"XIC({mod.routine}_S_Fault) XIO(Safety_Mod_Faults_R_Reset) ]"
+            f"XIC({mod.routine}_S_Fault) XIO(SAFETY._R_Mod_Faults_Reset) ]"
             f"OTE({mod.routine}_S_Fault)"
         )
         rungs.append(_rung_xml(rung_num, "", ladder))
