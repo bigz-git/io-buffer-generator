@@ -591,7 +591,7 @@ class _RackModuleBase(_BaseDialog):
         container = ttk.Frame(parent)
         container.pack(fill="both", expand=True)
 
-        canvas = tk.Canvas(container, height=160, width=560, highlightthickness=0)
+        canvas = tk.Canvas(container, height=160, width=600, highlightthickness=0)
         sb = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=sb.set)
         self._ch_inner = ttk.Frame(canvas)
@@ -629,7 +629,7 @@ class _RackModuleBase(_BaseDialog):
                 row=i + 1, column=2, padx=8, pady=1)
 
             name_var = tk.StringVar()
-            ttk.Entry(self._ch_inner, textvariable=name_var, width=22).grid(
+            ttk.Entry(self._ch_inner, textvariable=name_var, width=36).grid(
                 row=i + 1, column=3, padx=(8, 0), pady=1)
 
             self._slot_vars.append((bits_var, type_var, name_var))
