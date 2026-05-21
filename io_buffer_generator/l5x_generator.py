@@ -577,15 +577,9 @@ def _build_safety_mod_status_routine(rack: Rack) -> str:
         f"{_SEPARATOR}\n"
         f"Safety IO Module Status Subroutine\n"
         f"{_SEPARATOR}\n"
-        f"This routine has an internal toggle bit to enable or disable the routines JSR instruction in the Subroutine Calls routine.\n"
-        f"This bit is intended for commissioning and maintenance functions and must be high for normal line operations.\n"
-        f"{_SEPARATOR}\n"
-        f"Module Fault Detect Logic -- Master Control Relay\n"
-        f"<<  When the MCR is disabled, the rung-condition-in is false for all the instructions inside this subroutine >>\n"
-        f"{_SEPARATOR}"
     )
 
-    mcr_ladder = f"XIC(JSR_ENABLE_{rack.name})XIC(Safety_PLC_Run_TMR.DN)MCR()"
+    mcr_ladder = f"XIC(Safety_PLC_Run_TMR.DN)MCR()"
     rungs.append(_rung_xml(rung_num, comment, mcr_ladder))
     rung_num += 1
 
@@ -879,7 +873,7 @@ def generate(project: Project, output_dir: str, split_programs: bool = False) ->
         s_lines.extend(sfty_mod_status_local_tags)
         s_lines.append('</Tags>')
         s_lines.append('<Routines>')
-        s_lines.append(_build_calls_routine(sfty_mod_status_names))
+        s_lines.append(_build_calls_routine(sfty_mod_status_names, use_jsr_enable=False))
         s_lines.extend(sfty_mod_status_routines)
         s_lines.append('</Routines>')
         s_lines.append('</Program>')
