@@ -286,18 +286,39 @@ def _build_ctrl_tags(project: Project):
 # ---------------------------------------------------------------------------
 
 def _buff_routine_comment(is_safety: bool = False) -> str:
-    title = "Safety IO Buffer Status Subroutine" if is_safety else "IO Buffer Status Subroutine"
-    return (
-        f"{_SEPARATOR}\n"
-        f"{title}\n"
-        f"{_SEPARATOR}\n"
-        f"This routine has an internal toggle bit to enable or disable the routines JSR instruction in the Subroutine Calls routine.\n"
-        f"This bit is intended for commissioning and maintenance functions and must be high for normal line operations.\n"
-        f"{_SEPARATOR}\n"
-        f"Module Fault Detect Logic -- Master Control Relay\n"
-        f"<<  When the MCR is disabled, the rung-condition-in is false for all the instructions inside this subroutine >>\n"
-        f"{_SEPARATOR}"
-    )
+    if is_safety:
+        comment = (
+            f"{_SEPARATOR}\n"
+            f"Safety IO Buffer Status Subroutine\n"
+            f"{_SEPARATOR}\n"
+        )
+    else:
+        comment = (
+            f"{_SEPARATOR}\n"
+            f"IO Buffer Status Subroutine\n"
+            f"{_SEPARATOR}\n"
+            f"This routine has an internal toggle bit to enable or disable the routines JSR instruction in the Subroutine Calls routine.\n"
+            f"This bit is intended for commissioning and maintenance functions and must be high for normal line operations.\n"
+            f"{_SEPARATOR}\n"
+            f"Module Fault Detect Logic -- Master Control Relay\n"
+            f"<<  When the MCR is disabled, the rung-condition-in is false for all the instructions inside this subroutine >>\n"
+            f"{_SEPARATOR}"
+        )
+
+    # title = "Safety IO Buffer Status Subroutine" if is_safety else "IO Buffer Status Subroutine"
+    # return (
+    #     f"{_SEPARATOR}\n"
+    #     f"{title}\n"
+    #     f"{_SEPARATOR}\n"
+    #     f"This routine has an internal toggle bit to enable or disable the routines JSR instruction in the Subroutine Calls routine.\n"
+    #     f"This bit is intended for commissioning and maintenance functions and must be high for normal line operations.\n"
+    #     f"{_SEPARATOR}\n"
+    #     f"Module Fault Detect Logic -- Master Control Relay\n"
+    #     f"<<  When the MCR is disabled, the rung-condition-in is false for all the instructions inside this subroutine >>\n"
+    #     f"{_SEPARATOR}"
+    # )
+    return comment
+    
 
 
 def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
