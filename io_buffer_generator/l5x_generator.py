@@ -93,6 +93,24 @@ _ALL_UDT_XML = (
 
 _SEPARATOR = "=" * 137
 
+# Instruction names that changed in Studio 5000 v37. Add future renames here.
+_V37_RENAMES = {
+    "NEQ": "NE",
+    "EQU": "EQ",
+    "MOV": "MOVE",
+}
+
+
+def _instr(name: str, software_version: str) -> str:
+    """Return the correct instruction mnemonic for the given software version string."""
+    try:
+        major = int(software_version.split(".")[0])
+    except (ValueError, IndexError):
+        major = 0
+    if major >= 37:
+        return _V37_RENAMES.get(name, name)
+    return name
+
 
 # ---------------------------------------------------------------------------
 # XML helpers
@@ -309,9 +327,10 @@ def _buff_routine_comment(is_safety: bool = False) -> str:
     
 
 
-def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
+def _build_buffer_routine(rack: Rack, mod: Module, io_card: str, software_version: str = "36.00") -> str:
     rungs = []
     rung_num = 0
+    mov = _instr("MOV", software_version)
 
     # "Other" modules: blank routine with only the local JSR enable bit on rung 0
     if mod.type in OTHER_TYPES:
@@ -359,18 +378,18 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str) -> str:
 
         elif mod.type == "Analog Input":
             if rack.io_family == IO_FAMILY_FLEX5000:
-                ladder = f"MOV({rack.name}:{slot}:I.Ch{b:02d}.Data,{tag})"
+                ladder = f"{mov}({rack.name}:{slot}:I.Ch{b:02d}.Data,{tag})"
             else:
-                ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
+                ladder = f"{mov}({rack.name}:{slot}:I.Ch{b}Data,{tag})"
 
         elif mod.type == "Analog Output":
             if rack.io_family == IO_FAMILY_FLEX5000:
-                ladder = f"MOV({tag},{rack.name}:{slot}:O.Ch{b:02d}.Data)"
+                ladder = f"{mov}({tag},{rack.name}:{slot}:O.Ch{b:02d}.Data)"
             else:
-                ladder = f"MOV({tag},{rack.name}:{slot}:O.Ch{b}Data)"
+                ladder = f"{mov}({tag},{rack.name}:{slot}:O.Ch{b}Data)"
 
         elif mod.type == "Thermocouple/RTD":
-            ladder = f"MOV({rack.name}:{slot}:I.Ch{b}Data,{tag})"
+            ladder = f"{mov}({rack.name}:{slot}:I.Ch{b}Data,{tag})"
 
         elif mod.type == "Safety Input":
             if rack.io_family == IO_FAMILY_FLEX5000 or rack.io_family == IO_FAMILY_CLX:
@@ -463,24 +482,6 @@ def _mod_status_comment() -> str:
         f"<<  When the MCR is disabled, the rung-condition-in is false for all the instructions inside this subroutine >>\n"
         f"{_SEPARATOR}"
     )
-
-
-# Instruction names that changed in Studio 5000 v37. Add future renames here.
-_V37_RENAMES = {
-    "NEQ": "NE",
-    "EQU": "EQ",
-}
-
-
-def _instr(name: str, software_version: str) -> str:
-    """Return the correct instruction mnemonic for the given software version string."""
-    try:
-        major = int(software_version.split(".")[0])
-    except (ValueError, IndexError):
-        major = 0
-    if major >= 37:
-        return _V37_RENAMES.get(name, name)
-    return name
 
 
 def _build_mod_status_routine(rack: Rack, io_card: str, software_version: str = "36.00") -> str:
@@ -787,18 +788,18 @@ def generate(project: Project, output_dir: str, split_programs: bool = False) ->
             if mod.type in SAFETY_TYPES:
                 sfty_routine_names.append(mod.routine)
                 sfty_local_tags.append(_jsr_enable_tag(mod.routine, "Safety"))
-                sfty_routines.append(_build_buffer_routine(rack, mod, rack.network_card))
+                sfty_routines.append(_build_buffer_routine(rack, mod, rack.network_card, project.software_version))
                 rack_sfty_mods.append(mod.routine)
             elif split_programs:
                 bucket = _split_bucket(mod.type)
                 if bucket:
                     split_routine_names[bucket].append(mod.routine)
                     split_local_tags[bucket].append(_jsr_enable_tag(mod.routine))
-                    split_routines[bucket].append(_build_buffer_routine(rack, mod, rack.network_card))
+                    split_routines[bucket].append(_build_buffer_routine(rack, mod, rack.network_card, project.software_version))
             else:
                 buff_routine_names.append(mod.routine)
                 buff_local_tags.append(_jsr_enable_tag(mod.routine))
-                buff_routines.append(_build_buffer_routine(rack, mod, rack.network_card))
+                buff_routines.append(_build_buffer_routine(rack, mod, rack.network_card, project.software_version))
 
         if rack_sfty_mods:
             sfty_mod_status_names.append(rack.name)
