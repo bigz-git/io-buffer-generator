@@ -34,6 +34,7 @@ Rack sheet columns (1-indexed):
   F: I/O Buffer Tag Description
 """
 
+import os
 import re
 
 from openpyxl import Workbook, load_workbook
@@ -66,12 +67,38 @@ HEADER_BORDER = Border(bottom=Side(style="medium"))
 
 
 # ---------------------------------------------------------------------------
+# Workbook write guards
+# ---------------------------------------------------------------------------
+
+def _assert_workbook_writable(path: str) -> None:
+    """Raise ValueError if Excel's lock file exists for *path*."""
+    lock = os.path.join(os.path.dirname(os.path.abspath(path)), "~$" + os.path.basename(path))
+    if os.path.exists(lock):
+        raise ValueError(
+            f"'{os.path.basename(path)}' is open in another application. "
+            "Close the file and try again."
+        )
+
+
+def _save_workbook(wb, path: str) -> None:
+    """Save *wb* to *path*, converting PermissionError to a clear ValueError."""
+    try:
+        wb.save(path)
+    except PermissionError:
+        raise ValueError(
+            f"'{os.path.basename(path)}' could not be saved — it may be open in another application. "
+            "Close the file and try again."
+        ) from None
+
+
+# ---------------------------------------------------------------------------
 # Workbook creation
 # ---------------------------------------------------------------------------
 
 def create_workbook(path: str, software_version: str, controller_name: str,
                     io_network_cards: list,
                     project_number: str = "", project_description: str = "") -> None:
+    _assert_workbook_writable(path)
     _validate_network_cards(io_network_cards)
     wb = Workbook()
 
@@ -89,7 +116,7 @@ def create_workbook(path: str, software_version: str, controller_name: str,
     ws_help = wb.create_sheet(HELP_SHEET)
     _setup_cli_help_sheet(ws_help)
 
-    wb.save(path)
+    _save_workbook(wb, path)
 
 
 def _setup_cover_sheet(ws, software_version: str, controller_name: str,
@@ -199,6 +226,7 @@ def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMIL
     Creates a new rack sheet and updates the Cover Sheet summary.
     network_card: which IO network card this rack connects through (must match a card in the Network Cards sheet).
     """
+    _assert_workbook_writable(path)
     wb = load_workbook(path)
 
     if rack_name in wb.sheetnames:
@@ -208,7 +236,7 @@ def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMIL
     _write_rack_sheet(ws, modules)
     _append_cover_summary(wb[COVER_SHEET], rack_name, io_family, network_card)
 
-    wb.save(path)
+    _save_workbook(wb, path)
 
 
 def _normalize_modules(modules: list) -> list[dict]:
@@ -363,6 +391,7 @@ def read_network_cards(path: str) -> list:
 
 def add_network_card(path: str, card: NetworkCard) -> None:
     """Append a NetworkCard to the 'Network Cards' sheet."""
+    _assert_workbook_writable(path)
     wb = load_workbook(path)
     if NETWORK_CARDS_SHEET not in wb.sheetnames:
         raise ValueError(
@@ -379,7 +408,7 @@ def add_network_card(path: str, card: NetworkCard) -> None:
         row += 1
     ws.cell(row=row, column=1, value=card.name)
     ws.cell(row=row, column=2, value=card.slot)
-    wb.save(path)
+    _save_workbook(wb, path)
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +420,7 @@ def add_modules_to_rack(path: str, rack_name: str, new_modules: list) -> None:
     new_modules: list of int or list of dict {bits, module_type, routine_name}.
     Appended after existing modules. Removes the 'End' sentinel, appends rows, re-adds sentinel.
     """
+    _assert_workbook_writable(path)
     wb = load_workbook(path)
     if rack_name not in wb.sheetnames:
         raise ValueError(f"Rack '{rack_name}' not found in workbook.")
@@ -461,7 +491,7 @@ def add_modules_to_rack(path: str, rack_name: str, new_modules: list) -> None:
         current_row = end_row_mod + 1
 
     ws.cell(row=current_row, column=COL_SLOT, value="End")
-    wb.save(path)
+    _save_workbook(wb, path)
 
 
 # ---------------------------------------------------------------------------
@@ -706,6 +736,7 @@ def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
     Returns (filled_count, skipped_slots) where skipped_slots are slot numbers
     whose module type was not set.
     """
+    _assert_workbook_writable(path)
     wb = load_workbook(path)
     if rack_name not in wb.sheetnames:
         raise ValueError(f"Rack '{rack_name}' not found in workbook.")
@@ -757,7 +788,7 @@ def fill_tags(path: str, rack_name: str) -> tuple[int, list[int]]:
         filled += 1
 
     _check_all_tag_uniqueness(wb)
-    wb.save(path)
+    _save_workbook(wb, path)
     return filled, skipped_slots
 
 
@@ -766,6 +797,7 @@ def rename_rack(path: str, old_name: str, new_name: str) -> None:
     Rename a rack sheet and update the Cover Sheet summary row to match.
     Raises ValueError if old_name doesn't exist or new_name is already taken.
     """
+    _assert_workbook_writable(path)
     wb = load_workbook(path)
 
     if old_name not in wb.sheetnames:
@@ -794,7 +826,7 @@ def rename_rack(path: str, old_name: str, new_name: str) -> None:
             f"Sheet renamed, but Cover Sheet was not updated."
         )
 
-    wb.save(path)
+    _save_workbook(wb, path)
 
 
 def remove_rack(path: str, rack_name: str) -> None:
@@ -802,6 +834,7 @@ def remove_rack(path: str, rack_name: str) -> None:
     Delete a rack sheet and its Cover Sheet summary row.
     Raises ValueError if rack_name doesn't exist.
     """
+    _assert_workbook_writable(path)
     wb = load_workbook(path)
 
     if rack_name not in wb.sheetnames:
@@ -825,7 +858,7 @@ def remove_rack(path: str, rack_name: str) -> None:
             f"Rack sheet '{rack_name}' was deleted, but no matching row was found on the Cover Sheet."
         )
 
-    wb.save(path)
+    _save_workbook(wb, path)
 
 
 def fill_descriptions(path: str, rack_name: str) -> int:
@@ -835,6 +868,7 @@ def fill_descriptions(path: str, rack_name: str) -> int:
     Never overwrites existing values.
     Returns the count of cells filled.
     """
+    _assert_workbook_writable(path)
     wb = load_workbook(path)
     if rack_name not in wb.sheetnames:
         raise ValueError(f"Rack '{rack_name}' not found in workbook.")
@@ -854,7 +888,7 @@ def fill_descriptions(path: str, rack_name: str) -> int:
         ws.cell(row=row, column=COL_DESC).value = "spare"
         filled += 1
 
-    wb.save(path)
+    _save_workbook(wb, path)
     return filled
 
 
