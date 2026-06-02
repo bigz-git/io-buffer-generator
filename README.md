@@ -150,14 +150,14 @@ Tag names are generated from the module type and the PLC routine name. For the d
 
 | Module Type | Tag format | Data Type | Notes |
 |---|---|---|---|
-| Input | DI_XXXX.0-31 | DINT | |
-| Output | DO_XXXX.0-31 | DINT | |
-| Safety Input | DIS_XXXX.0-31 | DINT, Safety class | Point IO, Control Logix IO, and Flex 5000 IO families are supported|
-| Safety Output | DOS_XXXX.0-31 | DINT, Safety class | Point IO, Control Logix IO, and Flex 5000 IO families are supported|
+| Input | DI_XXXX.0-31 | DINT | Inputs are buffered to individual bits of the double integer |
+| Output | DO_XXXX.0-31 | DINT | Outputs are buffered to individual bits of the double integer |
+| Safety Input | DIS_XXXX.0-31 | DINT, Safety class | Only Point IO, Control Logix IO, and Flex 5000 IO families are supported|
+| Safety Output | DOS_XXXX.0-31 | DINT, Safety class | Only Point IO, Control Logix IO, and Flex 5000 IO families are supported|
 | Analog Input | AI_XXXX[0]-[n] | INT or REAL array | Data type depends on IO family type |
 | Analog Output | AO_XXXX[0]-[n] | INT or REAL array | Data type depends on IO family type |
 | Thermocouple/RTD | AI_XXXX[0]-[n] | INT or REAL array | Data type depends on IO family type |
-| Other | *(no buffer tag)* | na | |
+| Other | *(no buffer tag)* | na | No tags created for other type modules |
 
 Existing tag values are never overwritten. Rows where the module type is not set are skipped with a warning.
 
