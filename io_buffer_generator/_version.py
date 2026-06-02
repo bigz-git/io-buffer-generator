@@ -1,3 +1,3 @@
-__version__ = "1.5.2-beta.0"
-# this version will fix the IO Module Status routine to use the UDT tag for ._S_Fault instead of the standalone _S_Fault tag that
-# is currently being used.
+__version__ = "1.5.2"
+# this version fixes the issue with the IO Module Status routine using the standalone _S_Fault tag.
+# it now uses the ._S_Fault member of the UDT and applies this change to all the buffer file routines
