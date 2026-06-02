@@ -251,25 +251,16 @@ def _build_ctrl_tags(project: Project):
             if not mod.routine:
                 continue
 
-            # Safety modules: _S_Fault (mixed case, Safety class) goes to sfty_ctrl_tags
-            # Standard modules: _S_Fault (all caps, Standard class) goes to ctrl_tags
-            if mod.type in SAFETY_TYPES:
-                sfty.append(_tag_xml(f"{mod.routine}_S_Fault", "Safety", "BOOL", "", -1))
-            else:
-                ctrl.append(_tag_xml(f"{mod.routine}_S_Fault", "Standard", "BOOL", "", -1))
-
             sep = _separator_char(mod)
             base = _module_base(mod.routine)
+            is_safety = mod.type in SAFETY_TYPES
+            dest = sfty if is_safety else ctrl
+            tag_class = "Safety" if is_safety else "Standard"
 
-            if mod.type in OTHER_TYPES:
-                # QP_MODULE_TAGS_v02 for GSV fault detect; no buffer I/O tag
-                ctrl.append(_tag_xml(mod.routine, "Standard", "QP_MODULE_TAGS_v02",
-                                     f"{mod.routine}\nModule", -1))
+            dest.append(_tag_xml(mod.routine, tag_class, "QP_MODULE_TAGS_v02",
+                                 f"{mod.routine}\nModule", -1))
 
-            elif mod.type in ANALOG_TYPES:
-                # QP_MODULE_TAGS_v02 named after the routine (= module's I/O tree name)
-                ctrl.append(_tag_xml(mod.routine, "Standard", "QP_MODULE_TAGS_v02",
-                                     f"{mod.routine}\nModule", -1))
+            if mod.type in ANALOG_TYPES:
                 # CLX and Flex 5000 hardware exposes analog channels as REAL; others use INT
                 analog_dtype = "REAL" if rack.io_family in (IO_FAMILY_CLX, IO_FAMILY_FLEX5000) else "INT"
                 comments = [(_tag_operand(b.tag, sep), b.description)
@@ -279,8 +270,7 @@ def _build_ctrl_tags(project: Project):
                     "Standard", analog_dtype, "", len(mod.bits), comments
                 ))
 
-            elif mod.type in SAFETY_TYPES:
-                # Safety DINT buffer tag → sfty_ctrl_tags
+            elif is_safety:
                 comments = [(_tag_operand(b.tag, sep), b.description)
                             for b in mod.bits if b.description]
                 sfty.append(_tag_xml(
@@ -288,7 +278,7 @@ def _build_ctrl_tags(project: Project):
                     "Safety", "DINT", "", -1, comments
                 ))
 
-            else:  # Digital
+            elif mod.type not in OTHER_TYPES:  # Digital
                 comments = [(_tag_operand(b.tag, sep), b.description)
                             for b in mod.bits if b.description]
                 ctrl.append(_tag_xml(
@@ -346,7 +336,7 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str, software_versio
             f"XIC(JSR_ENABLE_{mod.routine})"
             f"XIO({io_card}._S_CommsFault)"
             f"XIO({rack.name}._S_Fault)"
-            f"XIO({mod.routine}_S_Fault)"
+            f"XIO({mod.routine}._S_Fault)"
             f"MCR()"
         )
     rungs.append(_rung_xml(rung_num, _buff_routine_comment(mod.type in SAFETY_TYPES), mcr_ladder))
@@ -528,53 +518,53 @@ def _build_mod_status_routine(rack: Rack, io_card: str, software_version: str = 
             if mod.type in DIGITAL_TYPES:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits.{addr_slot}) ,\n"
-                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}_S_Fault)"
+                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}._S_Fault)"
                 )
             else:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
-                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}_S_Fault)"
+                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}._S_Fault)"
                 )
         elif rack.io_family in (IO_FAMILY_FLEX5000):
             if mod.type in DIGITAL_TYPES:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) XIC({rack.name}:{addr_slot}:I.ConnectionFaulted) ,\n"
-                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}_S_Fault)"
+                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}._S_Fault)"
                 )
             else:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
-                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}_S_Fault)"
+                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}._S_Fault)"
                 )
         elif addr_slot < 32:
             if mod.type in DIGITAL_TYPES:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits0_31.{addr_slot}) ,\n"
-                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}_S_Fault)"
+                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}._S_Fault)"
                 )
             else:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
-                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}_S_Fault)"
+                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}._S_Fault)"
                 )
         elif addr_slot < 63:
             if mod.type in DIGITAL_TYPES:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits32_63.{addr_slot - 32}) ,\n"
-                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}_S_Fault)"
+                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}._S_Fault)"
                 )
             else:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
-                    f"XIC({mod.routine}_S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}_S_Fault)"
+                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+                    f"OTE({mod.routine}._S_Fault)"
                 )
         else:
             continue  # slot >= 63 not handled
@@ -608,8 +598,8 @@ def _build_safety_mod_status_routine(rack: Rack) -> str:
             continue
         ladder = (
             f"[XIC({rack.name}:{mod.slot}:I.ConnectionFaulted) ,"
-            f"XIC({mod.routine}_S_Fault) XIO(SAFETY._R_Mod_Faults_Reset) ]"
-            f"OTE({mod.routine}_S_Fault)"
+            f"XIC({mod.routine}._S_Fault) XIO(SAFETY._R_Mod_Faults_Reset) ]"
+            f"OTE({mod.routine}._S_Fault)"
         )
         rungs.append(_rung_xml(rung_num, "", ladder))
         rung_num += 1
