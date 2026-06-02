@@ -75,6 +75,7 @@ Each project is stored in a single `.xlsx` workbook:
 | Sheet | Contents |
 |---|---|
 | Cover Sheet | Project metadata (Software Version, Controller Name, IO Network Card Name, Project Number, Project Description) and rack summary table |
+| Network Cards | Displays all main rack network card names and slot information |
 | CLI Tool Help | Built-in command reference |
 | *(one sheet per rack)* | Module data — see columns below |
 
