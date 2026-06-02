@@ -48,6 +48,11 @@ CAD_SHEET           = "CAD_Descriptions"
 HELP_SHEET          = "CLI Tool Help"
 NETWORK_CARDS_SHEET = "Network Cards"
 
+# Upper row bound for the COUNTA formula that counts filled tags on each rack sheet.
+# Must be high enough to cover any realistic rack; changing this requires re-running
+# add-rack or manually editing the Cover Sheet formula.
+_RACK_COUNT_ROW_LIMIT = 5000
+
 COL_MOD_TYPE = 1   # A
 COL_SLOT     = 2   # B
 COL_ROUTINE  = 3   # C
@@ -116,7 +121,7 @@ def _setup_cover_sheet(ws, software_version: str, controller_name: str,
 
 def _validate_network_cards(io_network_cards: list) -> None:
     """Raise ValueError if any card name or slot number is duplicated."""
-    seen_names = {}
+    seen_names = set()
     seen_slots = {}
     for card in io_network_cards:
         if card.name in seen_names:
@@ -125,7 +130,7 @@ def _validate_network_cards(io_network_cards: list) -> None:
             raise ValueError(
                 f"Slot {card.slot} is assigned to both '{seen_slots[card.slot]}' and '{card.name}'."
             )
-        seen_names[card.name] = True
+        seen_names.add(card.name)
         seen_slots[card.slot] = card.name
 
 
@@ -304,7 +309,7 @@ def _append_cover_summary(ws_cover, rack_name: str, io_family: str = IO_FAMILY_P
     while ws_cover.cell(row=row, column=COL_MOD_TYPE).value is not None:
         row += 1
     ws_cover.cell(row=row, column=COL_MOD_TYPE, value=rack_name)
-    ws_cover.cell(row=row, column=COL_SLOT, value=f"=COUNTA('{rack_name}'!E2:E5000)")
+    ws_cover.cell(row=row, column=COL_SLOT, value=f"=COUNTA('{rack_name}'!E2:E{_RACK_COUNT_ROW_LIMIT})")
     ws_cover.cell(row=row, column=3, value=io_family)
     ws_cover.cell(row=row, column=4, value=network_card)
 
@@ -765,7 +770,7 @@ def rename_rack(path: str, old_name: str, new_name: str) -> None:
         if cell_name.value == old_name:
             cell_name.value = new_name
             # Rebuild the COUNTA formula with the new sheet name
-            ws_cover.cell(row=row, column=COL_SLOT).value = f"=COUNTA('{new_name}'!E2:E5000)"
+            ws_cover.cell(row=row, column=COL_SLOT).value = f"=COUNTA('{new_name}'!E2:E{_RACK_COUNT_ROW_LIMIT})"
             found = True
             break
 

@@ -14,6 +14,9 @@ import argparse
 import glob
 import os
 import sys
+from datetime import datetime
+
+from openpyxl import load_workbook
 
 from . import excel_manager
 from . import l5x_generator
@@ -218,8 +221,7 @@ def cmd_add_rack(args):
 def cmd_rename_rack(args):
     path = _get_workbook_path(args.workbook)
 
-    from openpyxl import load_workbook as lw
-    wb = lw(path, read_only=True)
+    wb = load_workbook(path, read_only=True)
     rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
@@ -256,8 +258,7 @@ def cmd_rename_rack(args):
 def cmd_remove_rack(args):
     path = _get_workbook_path(args.workbook)
 
-    from openpyxl import load_workbook as lw
-    wb = lw(path, read_only=True)
+    wb = load_workbook(path, read_only=True)
     rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
@@ -297,9 +298,7 @@ def cmd_remove_rack(args):
 def cmd_add_module(args):
     path = _get_workbook_path(args.workbook)
 
-    # Load workbook to show available racks
-    from openpyxl import load_workbook as lw
-    wb = lw(path, read_only=True)
+    wb = load_workbook(path, read_only=True)
     rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
@@ -341,8 +340,7 @@ def cmd_add_module(args):
 def cmd_fill_tags(args):
     path = _get_workbook_path(args.workbook)
 
-    from openpyxl import load_workbook as lw
-    wb = lw(path, read_only=True)
+    wb = load_workbook(path, read_only=True)
     rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
@@ -433,8 +431,7 @@ def cmd_validate(args):
 def cmd_fill_descriptions(args):
     path = _get_workbook_path(args.workbook)
 
-    from openpyxl import load_workbook as lw
-    wb = lw(path, read_only=True)
+    wb = load_workbook(path, read_only=True)
     rack_names = [s for s in wb.sheetnames if s not in (excel_manager.COVER_SHEET, excel_manager.CAD_SHEET, excel_manager.HELP_SHEET)]
     wb.close()
 
@@ -533,8 +530,6 @@ def cmd_generate(args):
 
 
 def cmd_generate_cad(args):
-    from datetime import datetime
-
     path = _get_workbook_path(args.workbook)
     output_dir = os.path.abspath(args.output) if args.output else os.path.dirname(os.path.abspath(path))
     os.makedirs(output_dir, exist_ok=True)

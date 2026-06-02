@@ -7,6 +7,7 @@ Produces up to two files:
 """
 
 import os
+import warnings
 from datetime import datetime
 
 from .models import Project, Rack, Module, Bit, DIGITAL_TYPES, ANALOG_TYPES, SAFETY_TYPES, OTHER_TYPES, IO_FAMILY_FLEX, IO_FAMILY_CLX, IO_FAMILY_FLEX5000
@@ -91,7 +92,12 @@ _ALL_UDT_XML = (
     _UDT_QP_MODULE_TAGS_v02,
 )
 
+# 137 matches the column width of the VBA-generated separator lines.
 _SEPARATOR = "=" * 137
+
+# Point IO backplane slot ranges for SlotStatusBits registers.
+_POINT_IO_SLOTS_0_31_LIMIT  = 32   # slots 0–31  → SlotStatusBits0_31
+_POINT_IO_SLOTS_32_63_LIMIT = 63   # slots 32–62 → SlotStatusBits32_63 (63+ unsupported)
 
 # Instruction names that changed in Studio 5000 v37. Add future renames here.
 _V37_RENAMES = {
@@ -106,6 +112,7 @@ def _instr(name: str, software_version: str) -> str:
     try:
         major = int(software_version.split(".")[0])
     except (ValueError, IndexError):
+        warnings.warn(f"Could not parse software version {software_version!r}; defaulting to pre-v37 instructions.")
         major = 0
     if major >= 37:
         return _V37_RENAMES.get(name, name)
@@ -393,7 +400,7 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str, software_versio
             else:
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Pt{b:02d}Data)"
         else:
-            continue
+            raise ValueError(f"Unhandled module type {mod.type!r} in rack '{rack.name}' slot {mod.slot}.")
 
         rungs.append(_rung_xml(rung_num, "", ladder))
         rung_num += 1
@@ -540,7 +547,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str, software_version: str = 
                     f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}._S_Fault)"
                 )
-        elif addr_slot < 32:
+        elif addr_slot < _POINT_IO_SLOTS_0_31_LIMIT:
             if mod.type in DIGITAL_TYPES:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits0_31.{addr_slot}) ,\n"
@@ -553,7 +560,7 @@ def _build_mod_status_routine(rack: Rack, io_card: str, software_version: str = 
                     f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
                     f"OTE({mod.routine}._S_Fault)"
                 )
-        elif addr_slot < 63:
+        elif addr_slot < _POINT_IO_SLOTS_32_63_LIMIT:
             if mod.type in DIGITAL_TYPES:
                 ladder = (
                     f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits32_63.{addr_slot - 32}) ,\n"
@@ -567,7 +574,9 @@ def _build_mod_status_routine(rack: Rack, io_card: str, software_version: str = 
                     f"OTE({mod.routine}._S_Fault)"
                 )
         else:
-            continue  # slot >= 63 not handled
+            raise ValueError(
+                f"Rack '{rack.name}' slot {addr_slot}: Point IO slot numbers >= {_POINT_IO_SLOTS_32_63_LIMIT} are not supported."
+            )
 
         rungs.append(_rung_xml(rung_num, mod_comment, ladder))
         rung_num += 1
