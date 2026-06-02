@@ -321,7 +321,6 @@ def _buff_routine_comment(is_safety: bool = False) -> str:
         )
 
     return comment
-    
 
 
 def _build_buffer_routine(rack: Rack, mod: Module, io_card: str, software_version: str = "36.00") -> str:
@@ -393,7 +392,7 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str, software_versio
                 ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}.Data)OTE({tag})"
             else:
                 ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}Data)OTE({tag})"
-            
+
         elif mod.type == "Safety Output":
             if rack.io_family == IO_FAMILY_FLEX5000 or rack.io_family == IO_FAMILY_CLX:
                 ladder = f"XIC({tag})OTE({rack.name}:{slot}:O.Pt{b:02d}.Data)"
@@ -411,7 +410,6 @@ def _build_buffer_routine(rack: Rack, mod: Module, io_card: str, software_versio
                 status_ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}.Status)NOP()"
             else:
                 status_ladder = f"XIC({rack.name}:{slot}:I.Pt{b:02d}Status)NOP()"
-            
             rungs.append(_rung_xml(rung_num, "", status_ladder))
             rung_num += 1
 
@@ -461,6 +459,28 @@ def _build_main_chassis_routine(io_network_cards: list) -> str:
         rung_num += 1
 
     return _routine_xml("A000_Main_Chassis", rungs)
+
+
+# ---------------------------------------------------------------------------
+# Module status ladder helpers
+# ---------------------------------------------------------------------------
+
+def _slot_status_ladder(rack_name: str, routine: str, status_ref: str) -> str:
+    """Build the OTE fault rung using a slot-status bit as the detect condition."""
+    return (
+        f"[XIO({rack_name}._S_Fault) XIC({status_ref}) ,\n"
+        f"XIC({routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+        f"OTE({routine}._S_Fault)"
+    )
+
+
+def _gsv_fault_ladder(rack_name: str, routine: str, neq: str) -> str:
+    """Build the OTE fault rung using a GSV FaultCode check as the detect condition."""
+    return (
+        f"[XIO({rack_name}._S_Fault) GSV(Module,{routine},FaultCode,{routine}._S_FaultCode) {neq}({routine}._S_FaultCode,0) ,\n"
+        f"XIC({routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
+        f"OTE({routine}._S_Fault)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -523,56 +543,24 @@ def _build_mod_status_routine(rack: Rack, io_card: str, software_version: str = 
 
         if rack.io_family in (IO_FAMILY_FLEX, IO_FAMILY_CLX):
             if mod.type in DIGITAL_TYPES:
-                ladder = (
-                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits.{addr_slot}) ,\n"
-                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}._S_Fault)"
-                )
+                ladder = _slot_status_ladder(rack.name, mod.routine, f"{rack.name}:I.SlotStatusBits.{addr_slot}")
             else:
-                ladder = (
-                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
-                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}._S_Fault)"
-                )
-        elif rack.io_family in (IO_FAMILY_FLEX5000):
+                ladder = _gsv_fault_ladder(rack.name, mod.routine, neq)
+        elif rack.io_family == IO_FAMILY_FLEX5000:
             if mod.type in DIGITAL_TYPES:
-                ladder = (
-                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:{addr_slot}:I.ConnectionFaulted) ,\n"
-                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}._S_Fault)"
-                )
+                ladder = _slot_status_ladder(rack.name, mod.routine, f"{rack.name}:{addr_slot}:I.ConnectionFaulted")
             else:
-                ladder = (
-                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
-                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}._S_Fault)"
-                )
+                ladder = _gsv_fault_ladder(rack.name, mod.routine, neq)
         elif addr_slot < _POINT_IO_SLOTS_0_31_LIMIT:
             if mod.type in DIGITAL_TYPES:
-                ladder = (
-                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits0_31.{addr_slot}) ,\n"
-                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}._S_Fault)"
-                )
+                ladder = _slot_status_ladder(rack.name, mod.routine, f"{rack.name}:I.SlotStatusBits0_31.{addr_slot}")
             else:
-                ladder = (
-                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
-                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}._S_Fault)"
-                )
+                ladder = _gsv_fault_ladder(rack.name, mod.routine, neq)
         elif addr_slot < _POINT_IO_SLOTS_32_63_LIMIT:
             if mod.type in DIGITAL_TYPES:
-                ladder = (
-                    f"[XIO({rack.name}._S_Fault) XIC({rack.name}:I.SlotStatusBits32_63.{addr_slot - 32}) ,\n"
-                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}._S_Fault)"
-                )
+                ladder = _slot_status_ladder(rack.name, mod.routine, f"{rack.name}:I.SlotStatusBits32_63.{addr_slot - _POINT_IO_SLOTS_0_31_LIMIT}")
             else:
-                ladder = (
-                    f"[XIO({rack.name}._S_Fault) GSV(Module,{mod.routine},FaultCode,{mod.routine}._S_FaultCode) {neq}({mod.routine}._S_FaultCode,0) ,\n"
-                    f"XIC({mod.routine}._S_Fault) XIO(PLC._R_Module_Faults_Reset) ]\n"
-                    f"OTE({mod.routine}._S_Fault)"
-                )
+                ladder = _gsv_fault_ladder(rack.name, mod.routine, neq)
         else:
             raise ValueError(
                 f"Rack '{rack.name}' slot {addr_slot}: Point IO slot numbers >= {_POINT_IO_SLOTS_32_63_LIMIT} are not supported."

@@ -18,12 +18,14 @@ IO_FAMILY_DROPDOWN = f"{IO_FAMILY_POINT},{IO_FAMILY_FLEX},{IO_FAMILY_CLX},{IO_FA
 
 @dataclass
 class NetworkCard:
+    """An IO network adapter on the main chassis backplane."""
     name: str
     slot: int = 0
 
 
 @dataclass
 class Bit:
+    """A single I/O channel within a module."""
     index: int        # 0-indexed bit/channel within module
     tag: str          # buffer tag name, e.g. "CONV_01_IN.0" or "CONV_01_AIN[0]"
     description: str  # tag description
@@ -31,6 +33,7 @@ class Bit:
 
 @dataclass
 class Module:
+    """One physical IO module occupying a slot in a rack."""
     slot: int             # slot number as entered (1-indexed)
     type: str             # "Input", "Output", "Safety Input", etc.
     routine: str          # PLC routine name
@@ -39,17 +42,19 @@ class Module:
 
 @dataclass
 class Rack:
+    """One IO rack (adapter + modules) connected through an IO network card."""
     name: str
-    io_family: str = IO_FAMILY_POINT  # "1734" (Point IO) or "1794" (Flex IO)
+    io_family: str = IO_FAMILY_POINT  # "1734" (Point IO), "1794" (Flex IO), "1756" (CLX), "5094" (Flex 5000)
     network_card: str = ""            # which IO network card this rack is connected through
     modules: list = field(default_factory=list)  # list[Module]
 
 
 @dataclass
 class Project:
+    """Top-level container for all data read from a project workbook."""
     software_version: str
     controller_name: str
-    io_network_cards: list            # list[str] — first entry is the primary card
+    io_network_cards: list            # list[NetworkCard]
     project_number: str = ""
     project_description: str = ""
     racks: list = field(default_factory=list)  # list[Rack]

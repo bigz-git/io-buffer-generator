@@ -212,7 +212,14 @@ def add_rack(path: str, rack_name: str, modules: list, io_family: str = IO_FAMIL
 
 
 def _normalize_modules(modules: list) -> list[dict]:
-    """Accept list[int] (CLI) or list[dict] (GUI) and return uniform list[dict]."""
+    """
+    Accept list[int] (CLI) or list[dict] (GUI) and return a uniform list of dicts.
+
+    Each output dict has keys:
+      bits         — int, number of channels in the module
+      module_type  — str, e.g. "Input", "Analog Output" (empty string if not set)
+      routine_name — str, PLC routine name (empty string if not set)
+    """
     result = []
     for m in modules:
         if isinstance(m, int):
@@ -462,6 +469,13 @@ def add_modules_to_rack(path: str, rack_name: str, new_modules: list) -> None:
 # ---------------------------------------------------------------------------
 
 def read_project(path: str) -> Project:
+    """
+    Load and return a fully-populated Project from the workbook at *path*.
+
+    Raises ValueError for any structural problem: missing metadata, unrecognized
+    IO family, unknown network card, missing routine name, missing tag, or
+    duplicate routine/tag names within or across racks.
+    """
     wb = load_workbook(path, data_only=True)
     ws_cover = wb[COVER_SHEET]
 
