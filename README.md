@@ -85,8 +85,8 @@ Each project is stored in a single `.xlsx` workbook:
 |---|---|---|
 | A | Module Type | Dropdown: Input, Output, Safety Input, Safety Output, Analog Input, Analog Output, Thermocouple/RTD, Other |
 | B | Module Slot Number | Auto-filled by `add-rack`; merged per module |
-| C | PLC Routine Name | Enter manually in Excel (or leave placeholder and use `fill-tags`) |
-| D | I/O Bit | 0-indexed channel number; auto-filled by `add-rack` |
+| C | PLC Routine Name | Enter in `add-rack` dialog popup or enter manually in Excel |
+| D | I/O Point | 0-indexed channel number; auto-filled by `add-rack` |
 | E | I/O Buffer Tag Name | Enter manually or use `fill-tags` to auto-generate |
 | F | I/O Buffer Tag Description | Enter manually or use `fill-descriptions` to fill blanks with "spare" |
 
@@ -121,6 +121,7 @@ If `--output` is not specified, generated files are written to the same director
 | Command | Description |
 |---|---|
 | `init` | Create a new project workbook with a Cover Sheet |
+| `add-network-card` | Add an IO network card to the workbook |
 | `add-rack` | Add a rack sheet (prompts for rack name, IO family, number of modules, and channels per module) |
 | `rename-rack` | Rename an existing rack sheet and update the Cover Sheet |
 | `remove-rack` | Remove a rack sheet and its Cover Sheet entry |
@@ -129,6 +130,7 @@ If `--output` is not specified, generated files are written to the same director
 | `fill-descriptions` | Fill blank descriptions in column F with "spare" |
 | `validate` | Check the workbook for errors and warnings without generating any files |
 | `list` | Print a summary of all racks and modules |
+| `list-udts` | List UDTs and their members used in generated L5X files |
 | `generate` | Generate `.l5x` file(s) from the workbook |
 | `generate-cad` | *(WIP)* Generate a CAD description `.xlsx` from the workbook |
 
@@ -144,6 +146,17 @@ io-buffer generate --output ./output
 
 Tag names are generated from the module type and the PLC routine name. For the drawing number to be embedded in the tag, the routine name must begin with `R` or `r` followed by one or more alphanumeric characters (e.g. `R4103_IB8`, `r410A_IB8`). If the routine name does not follow this format, `fill-tags` will still run but the tag will use `XXXX` as a placeholder (e.g. `DI_XXXX.0`).
 
+| Module Type | Tag format | Data Type | Notes |
+|---|---|---|
+| Input | DI_XXXX.0-31 | DINT |
+| Output | DO_XXXX.0-31 | DINT |
+| Safety Input | DIS_XXXX.0-31 | DINT, Safety class | Point IO, Control Logix IO, and Flex 5000 IO families are supported|
+| Safety Output | DOS_XXXX.0-31 | DINT, Safety class | Point IO, Control Logix IO, and Flex 5000 IO families are supported|
+| Analog Input | AI_XXXX[0]-[n] | INT or REAL array | Data type depends on IO family type |
+| Analog Output | AO_XXXX[0]-[n] | INT or REAL array | Data type depends on IO family type |
+| Thermocouple/RTD | AI_XXXX[0]-[n] | INT or REAL array | Data type depends on IO family type |
+| Other | *(no buffer tag)* | 
+
 Existing tag values are never overwritten. Rows where the module type is not set are skipped with a warning.
 
 ---
@@ -158,9 +171,9 @@ The GUI provides the same functionality as the CLI in a Tkinter window. On launc
 
 **Buttons available:**
 
-- **Setup:** Add Rack, Add Module, Rename Rack, Remove Rack
+- **Setup:** Add Network Card, Add Rack, Add Module, Rename Rack, Remove Rack
 - **Populate:** Fill Tags, Fill Descriptions
-- **Tools:** List, Validate, Generate
+- **Tools:** List, List UDTs, Validate, Generate
 
 > Note: `generate-cad` is not currently exposed in the GUI.
 
